@@ -1,0 +1,609 @@
+import { LitElement, html, svg, css, TemplateResult, nothing, PropertyValues } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import { HomeAssistant, LovelaceCard, LovelaceCardEditor, fireEvent } from "custom-card-helpers";
+import type { LayZSpaCardConfig } from "./types";
+import { CARD_TAG, CARD_VERSION, EDITOR_TAG } from "./const";
+import {
+  AVAILABILITY_TEXT,
+  availability,
+  dialRange,
+  errorCode,
+  formatPower,
+  numberOf,
+  readyView,
+  toNumber,
+  type States,
+} from "./status";
+import {
+  ARC_END,
+  ARC_R,
+  ARC_START,
+  angleOfValue,
+  arcPath,
+  clampTarget,
+  isNearHandle,
+  pointerAngle,
+  polarToCartesian,
+  valueFromAngle,
+} from "./dial";
+import { detectEntities } from "./detect";
+import "./editor";
+
+/* eslint-disable no-console */
+console.info(
+  `%c LAY-Z-SPA-CARD %c v${CARD_VERSION} `,
+  "color: white; background: #ff8100; font-weight: 700;",
+  "color: #ff8100; background: #1c1c1c; font-weight: 700;"
+);
+
+(window as any).customCards = (window as any).customCards || [];
+(window as any).customCards.push({
+  type: CARD_TAG,
+  name: "Lay-Z-Spa Card",
+  description: "Gestión del jacuzzi: temperatura, modos, burbujas, tiempo hasta listo y consumo",
+  preview: true,
+});
+
+const GREY = "#6f7176";
+const MODE_META: Record<string, { icon: string; label: string; color: string; dot: string }> = {
+  off: { icon: "mdi:power", label: "Apagado", color: GREY, dot: "#4a4b4f" },
+  fan_only: { icon: "mdi:fan", label: "Filtro", color: "#2b9af9", dot: "#15578f" },
+  heat: { icon: "mdi:fire", label: "Calor", color: "#ff8100", dot: "#9c4e00" },
+};
+const MODE_ORDER = ["off", "fan_only", "heat"];
+
+@customElement(CARD_TAG)
+export class LayZSpaCard extends LitElement implements LovelaceCard {
+  @property({ attribute: false }) public hass!: HomeAssistant;
+  @state() private config!: LayZSpaCardConfig;
+  @state() private _dragging = false;
+  @state() private _dragTemp: number | null = null;
+
+  private _valueAngle = 0;
+  private _dragPointerId: number | null = null;
+  private _boundMove = (e: PointerEvent) => this._onPointerMove(e);
+  private _boundUp = () => this._onPointerUp();
+
+  public static async getConfigElement(): Promise<LovelaceCardEditor> {
+    return document.createElement(EDITOR_TAG) as unknown as LovelaceCardEditor;
+  }
+
+  public static getStubConfig(hass?: HomeAssistant): Record<string, unknown> {
+    return { name: "Jacuzzi", ...detectEntities(hass ? Object.keys(hass.states) : []) };
+  }
+
+  public setConfig(config: LayZSpaCardConfig): void {
+    if (!config.climate) throw new Error("Falta 'climate'");
+    this.config = { ...config };
+  }
+
+  public getCardSize(): number {
+    return 6;
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._removeWindowListeners();
+  }
+
+  protected shouldUpdate(changed: PropertyValues): boolean {
+    return (
+      changed.has("config") || changed.has("hass") || changed.has("_dragging") || changed.has("_dragTemp")
+    );
+  }
+
+  private get _states(): States {
+    return this.hass.states as unknown as States;
+  }
+
+  protected render(): TemplateResult | typeof nothing {
+    if (!this.hass || !this.config) return nothing;
+    const states = this._states;
+    const climate = states[this.config.climate];
+    if (!climate) {
+      return html`<ha-card><div class="warn">Entidad no encontrada: ${this.config.climate}</div></ha-card>`;
+    }
+
+    const avail = availability(states, this.config);
+    const ok = avail === "ok";
+    const mode = climate.state;
+    const meta = MODE_META[mode];
+    const accent = ok && meta ? meta.color : GREY;
+    const dotColor = ok && meta ? meta.dot : "#4a4b4f";
+    const { min, max } = dialRange(climate.attributes);
+    const target = toNumber(climate.attributes.temperature);
+    const liveTarget = this._dragTemp ?? target ?? min;
+    const current = ok ? toNumber(climate.attributes.current_temperature) : null;
+    const heaterOn = ok && !!this.config.heater && states[this.config.heater]?.state === "on";
+
+    const valueAngle = angleOfValue(liveTarget, min, max);
+    this._valueAngle = valueAngle % 360;
+    const handle = polarToCartesian(100, 100, ARC_R, valueAngle);
+    const curAngle = current !== null ? angleOfValue(current, min, max) : null;
+    const curDot = curAngle !== null ? polarToCartesian(100, 100, ARC_R, curAngle) : null;
+    const fillStart = curAngle !== null ? Math.min(valueAngle, curAngle) : ARC_START;
+    const fillEnd = curAngle !== null ? Math.max(valueAngle, curAngle) : valueAngle;
+    const gradId = `grad-${mode}`;
+
+    const label = !meta ? mode : mode === "heat" && heaterOn ? "Calentando" : meta.label;
+    const power = numberOf(this.config.power ? states[this.config.power] : undefined);
+
+    return html`
+      <ha-card style="--accent:${accent}">
+        <div class="header">
+          <span class="title"><ha-icon icon="mdi:hot-tub"></ha-icon>${this.config.name ?? "Jacuzzi"}</span>
+          ${power !== null
+            ? html`<button
+                class="power"
+                title="Consumo real"
+                @click=${() => this._openMoreInfo(this.config.energy_today || this.config.power)}
+              >
+                <ha-icon icon="mdi:flash"></ha-icon>${formatPower(power)} W
+              </button>`
+            : nothing}
+        </div>
+
+        <div class="dial-wrap">
+          <svg viewBox="0 0 200 200" class="dial ${ok ? "" : "off"}" @pointerdown=${this._onPointerDown}>
+            <defs>
+              <linearGradient id=${gradId} x1="0" y1="0" x2="1" y2="1">
+                ${mode === "fan_only"
+                  ? svg`<stop offset="0%" stop-color="#5cc6ff" /><stop offset="100%" stop-color="#1f7fd6" />`
+                  : mode === "heat"
+                  ? svg`<stop offset="0%" stop-color="#ffb454" /><stop offset="100%" stop-color="#e8730a" />`
+                  : svg`<stop offset="0%" stop-color="#8a8c91" /><stop offset="100%" stop-color="#5d5f63" />`}
+              </linearGradient>
+            </defs>
+            <path class="track" d=${arcPath(100, 100, ARC_R, ARC_START, ARC_END)} />
+            ${ok
+              ? svg`
+                <path class="glow" style="stroke:${accent}" d=${arcPath(100, 100, ARC_R, fillStart, fillEnd)} />
+                <path class="value" style="stroke:url(#${gradId})" d=${arcPath(100, 100, ARC_R, fillStart, fillEnd)} />
+                ${curDot ? svg`<circle class="curdot" style="fill:${dotColor}" cx=${curDot.x} cy=${curDot.y} r="4" />` : nothing}
+                <circle class="handle ${heaterOn ? "pulse" : ""}" style="stroke:${accent}" cx=${handle.x} cy=${handle.y} r="8" />`
+              : nothing}
+          </svg>
+          <div class="dial-center">${ok ? this._renderCenter(label, liveTarget, current) : this._renderUnavailable(avail)}</div>
+        </div>
+
+        ${ok ? this._renderInfo() : nothing} ${this._renderModes(ok, mode, climate.attributes.hvac_modes)}
+      </ha-card>
+    `;
+  }
+
+  private _renderCenter(label: string, target: number, current: number | null): TemplateResult {
+    return html`
+      <div class="mode-name">${label}</div>
+      <div class="target">
+        <span class="int">${Math.round(target)}</span><span class="unit">°C</span>
+      </div>
+      ${current !== null
+        ? html`<div class="current clickable" title="Ver histórico" @click=${() => this._openMoreInfo(this.config.climate)}>
+            <ha-icon icon="mdi:water-thermometer"></ha-icon>${String(current).replace(".", ",")} °C
+          </div>`
+        : nothing}
+      <div class="adjust">
+        <button class="round" @click=${() => this._step(-1)}><ha-icon icon="mdi:minus"></ha-icon></button>
+        <button class="round" @click=${() => this._step(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
+      </div>
+    `;
+  }
+
+  private _renderUnavailable(avail: Exclude<ReturnType<typeof availability>, "ok">): TemplateResult {
+    const t = AVAILABILITY_TEXT[avail];
+    return html`
+      <ha-icon class="unavail-icon" icon=${t.icon}></ha-icon>
+      <div class="unavail-title">${t.title}</div>
+      <div class="unavail-detail">${t.detail}</div>
+    `;
+  }
+
+  private _renderInfo(): TemplateResult {
+    const states = this._states;
+    const ambient = numberOf(this.config.ambient ? states[this.config.ambient] : undefined);
+    const ready = readyView(states, this.config);
+    const err = errorCode(states, this.config);
+    return html`
+      <div class="info">
+        ${ambient !== null
+          ? html`<span class="item clickable" @click=${() => this._openMoreInfo(this.config.ambient)}>
+              <ha-icon icon="mdi:home-thermometer-outline"></ha-icon>Amb. ${String(ambient).replace(".", ",")} °C
+            </span>`
+          : nothing}
+        ${ready.kind === "ready"
+          ? html`<span class="chip ready"><ha-icon icon="mdi:check-circle"></ha-icon>Listo</span>`
+          : ready.kind === "eta"
+          ? html`<span class="item clickable" @click=${() => this._openMoreInfo(this.config.time_to_ready)}>
+              <ha-icon icon="mdi:timer-sand"></ha-icon>Listo en ${ready.text}
+            </span>`
+          : nothing}
+      </div>
+      ${err
+        ? html`<div class="warnings"><span class="chip error"><ha-icon icon="mdi:alert"></ha-icon>Error ${err}</span></div>`
+        : nothing}
+    `;
+  }
+
+  private _renderModes(ok: boolean, mode: string, hvacModes: unknown): TemplateResult {
+    const supported = Array.isArray(hvacModes) ? (hvacModes as string[]) : MODE_ORDER;
+    const bubblesId = this.config.bubbles;
+    const bubblesOn = !!bubblesId && this._states[bubblesId]?.state === "on";
+    return html`
+      <div class="bar">
+        <div class="modes">
+          ${MODE_ORDER.filter((m) => supported.includes(m)).map((m) => {
+            const meta = MODE_META[m];
+            return html`<button
+              class="mode ${ok && mode === m ? "active" : ""}"
+              style="--mode-color:${meta.color}"
+              title=${meta.label}
+              ?disabled=${!ok}
+              @click=${() => this._setMode(m)}
+            >
+              <ha-icon icon=${meta.icon}></ha-icon>
+            </button>`;
+          })}
+        </div>
+        ${bubblesId
+          ? html`<button
+              class="bubbles ${ok && bubblesOn ? "active" : ""}"
+              title="Burbujas"
+              ?disabled=${!ok}
+              @click=${this._toggleBubbles}
+            >
+              <ha-icon icon="mdi:chart-bubble"></ha-icon>
+            </button>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  // --- acciones ---
+  private _setMode(mode: string): void {
+    this.hass.callService("climate", "set_hvac_mode", { entity_id: this.config.climate, hvac_mode: mode });
+  }
+
+  private _toggleBubbles = (): void => {
+    if (!this.config.bubbles) return;
+    this.hass.callService("switch", "toggle", { entity_id: this.config.bubbles });
+  };
+
+  private _step(dir: number): void {
+    const climate = this._states[this.config.climate];
+    if (!climate) return;
+    const { min, max, step } = dialRange(climate.attributes);
+    const cur = toNumber(climate.attributes.temperature) ?? min;
+    const next = clampTarget(cur + dir * step, min, max, step);
+    if (next === cur) return;
+    this.hass.callService("climate", "set_temperature", { entity_id: this.config.climate, temperature: next });
+  }
+
+  private _openMoreInfo(entityId?: string): void {
+    if (!entityId || !this.hass?.states[entityId]) return;
+    fireEvent(this, "hass-more-info", { entityId });
+  }
+
+  // --- arrastre del dial ---
+  private _svg(): SVGElement | null {
+    return this.renderRoot.querySelector("svg.dial") as SVGElement | null;
+  }
+
+  private _onPointerDown(e: PointerEvent): void {
+    if (availability(this._states, this.config) !== "ok") return;
+    const svgEl = this._svg();
+    if (!svgEl) return;
+    const rect = svgEl.getBoundingClientRect();
+    if (!rect.width) return;
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    if (!isNearHandle(dx, dy, rect.width / 200, this._valueAngle)) return;
+    e.preventDefault();
+    this._dragging = true;
+    this._dragPointerId = e.pointerId;
+    try {
+      svgEl.setPointerCapture(e.pointerId);
+    } catch (_) {
+      /* noop */
+    }
+    window.addEventListener("pointermove", this._boundMove);
+    window.addEventListener("pointerup", this._boundUp);
+    window.addEventListener("pointercancel", this._boundUp);
+  }
+
+  private _onPointerMove(e: PointerEvent): void {
+    if (!this._dragging) return;
+    if (e.cancelable) e.preventDefault();
+    const svgEl = this._svg();
+    const climate = this._states[this.config.climate];
+    if (!svgEl || !climate) return;
+    const rect = svgEl.getBoundingClientRect();
+    const angle = pointerAngle(e.clientX - (rect.left + rect.width / 2), e.clientY - (rect.top + rect.height / 2));
+    const { min, max, step } = dialRange(climate.attributes);
+    this._dragTemp = valueFromAngle(angle, min, max, step);
+  }
+
+  private _onPointerUp(): void {
+    if (!this._dragging) return;
+    this._dragging = false;
+    this._removeWindowListeners();
+    if (this._dragPointerId !== null) {
+      try {
+        this._svg()?.releasePointerCapture(this._dragPointerId);
+      } catch (_) {
+        /* noop */
+      }
+      this._dragPointerId = null;
+    }
+    const climate = this._states[this.config.climate];
+    const current = climate ? toNumber(climate.attributes.temperature) : null;
+    if (this._dragTemp !== null && this._dragTemp !== current) {
+      this.hass.callService("climate", "set_temperature", {
+        entity_id: this.config.climate,
+        temperature: this._dragTemp,
+      });
+    }
+    this._dragTemp = null;
+  }
+
+  private _removeWindowListeners(): void {
+    window.removeEventListener("pointermove", this._boundMove);
+    window.removeEventListener("pointerup", this._boundUp);
+    window.removeEventListener("pointercancel", this._boundUp);
+  }
+
+  static styles = css`
+    ha-card {
+      padding: 12px 12px 16px;
+      color: var(--primary-text-color);
+    }
+    .warn {
+      padding: 16px;
+      color: var(--error-color, #db4437);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 4px 0;
+    }
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--secondary-text-color);
+    }
+    .title ha-icon {
+      --mdc-icon-size: 20px;
+    }
+    button.power {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      border: none;
+      background: transparent;
+      color: var(--secondary-text-color);
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+    button.power ha-icon {
+      --mdc-icon-size: 16px;
+    }
+
+    .dial-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 300px;
+      margin: 4px auto 0;
+      aspect-ratio: 1 / 1;
+    }
+    .dial {
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    .track {
+      fill: none;
+      stroke: var(--divider-color, #38393d);
+      stroke-width: 18;
+      stroke-linecap: round;
+    }
+    .glow {
+      fill: none;
+      stroke-width: 18;
+      stroke-linecap: round;
+      opacity: 0.45;
+      filter: blur(6px);
+    }
+    .value {
+      fill: none;
+      stroke-width: 18;
+      stroke-linecap: round;
+    }
+    .handle {
+      fill: #fff;
+      stroke-width: 3;
+      cursor: grab;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+    }
+    .handle.pulse {
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,
+      100% {
+        stroke-width: 3;
+      }
+      50% {
+        stroke-width: 6;
+      }
+    }
+    .dial-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      pointer-events: none;
+      text-align: center;
+      padding: 0 22%;
+    }
+    .mode-name {
+      font-size: 1.05rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .target {
+      display: flex;
+      align-items: flex-start;
+      line-height: 1;
+    }
+    .target .int {
+      font-size: 3.6rem;
+      font-weight: 300;
+      letter-spacing: -1px;
+    }
+    .target .unit {
+      font-size: 1.05rem;
+      color: var(--secondary-text-color);
+      margin-top: 8px;
+      margin-left: 2px;
+    }
+    .current {
+      font-size: 0.95rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .current ha-icon,
+    .item ha-icon,
+    .chip ha-icon {
+      --mdc-icon-size: 16px;
+    }
+    .clickable {
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .adjust {
+      display: flex;
+      gap: 24px;
+      margin-top: 8px;
+      pointer-events: auto;
+    }
+    button.round {
+      border: 2px solid var(--divider-color, #46494d);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--primary-text-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .unavail-icon {
+      --mdc-icon-size: 36px;
+      color: var(--secondary-text-color);
+    }
+    .unavail-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .unavail-detail {
+      font-size: 0.85rem;
+      color: var(--secondary-text-color);
+    }
+
+    .info {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 4px;
+      font-size: 0.92rem;
+      color: var(--secondary-text-color);
+    }
+    .item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .warnings {
+      display: flex;
+      justify-content: center;
+      margin-top: 6px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.85rem;
+      padding: 2px 10px;
+      border-radius: 12px;
+      color: #fff;
+    }
+    .chip.ready {
+      background: #43a047;
+    }
+    .chip.error {
+      background: var(--error-color, #db4437);
+    }
+
+    .bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .modes {
+      flex: 1;
+      display: flex;
+      gap: 6px;
+      background: var(--secondary-background-color, #2a2a2a);
+      border-radius: 14px;
+      padding: 4px;
+    }
+    .mode,
+    .bubbles {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--secondary-text-color);
+      padding: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bubbles {
+      flex: 0 0 56px;
+      background: var(--secondary-background-color, #2a2a2a);
+      border-radius: 14px;
+    }
+    .mode.active {
+      background: var(--mode-color);
+      color: #fff;
+    }
+    .bubbles.active {
+      background: #26a69a;
+      color: #fff;
+    }
+    .mode:disabled,
+    .bubbles:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+  `;
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "lay-z-spa-card": LayZSpaCard;
+  }
+}

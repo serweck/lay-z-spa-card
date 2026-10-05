@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lay-Z-Spa Card · Preview</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      font-family: "Segoe UI", sans-serif;
+      background: #111;
+      color: #e1e1e1;
+      --ha-card-background: #1c1c1e;
+      --card-background-color: #1c1c1e;
+      --primary-text-color: #e1e1e1;
+      --secondary-text-color: #9b9b9b;
+      --secondary-background-color: #2a2a2c;
+      --divider-color: #ffffff1f;
+      --error-color: #db4437;
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+    h3 { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.6; margin: 0 0 8px; }
+    #log { margin-top: 24px; font: 12px monospace; white-space: pre; opacity: 0.8; }
+  </style>
+  <script>
+    const ICONS = {
+      "mdi:power": "⏻", "mdi:fan": "🌀", "mdi:fire": "🔥", "mdi:chart-bubble": "🫧",
+      "mdi:minus": "−", "mdi:plus": "+", "mdi:hot-tub": "🛁", "mdi:flash": "⚡",
+      "mdi:water-thermometer": "💧", "mdi:home-thermometer-outline": "🌡", "mdi:timer-sand": "⏳",
+      "mdi:check-circle": "✓", "mdi:alert": "⚠", "mdi:power-plug-off": "🔌",
+      "mdi:flash-alert": "⚡", "mdi:wifi-off": "📴",
+    };
+    // Como el ha-card real: estilo en su propio shadow DOM (la tarjeta pone style="--accent:...").
+    customElements.define("ha-card", class extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: "open" }).innerHTML =
+          "<style>:host{display:block;background:var(--ha-card-background);border-radius:12px;" +
+          "border:1px solid var(--divider-color)}</style><slot></slot>";
+      }
+    });
+    customElements.define("ha-icon", class extends HTMLElement {
+      static get observedAttributes() { return ["icon"]; }
+      attributeChangedCallback() { this.textContent = ICONS[this.getAttribute("icon")] ?? "•"; }
+      connectedCallback() { this.attributeChangedCallback(); }
+    });
+  </script>
+  <script type="module" src="./dist/lay-z-spa-card.js"></script>
+</head>
+<body>
+  <div class="grid" id="grid"></div>
+  <div id="log"></div>
+  <script type="module">
+    const CONFIG = {
+      type: "custom:lay-z-spa-card", name: "Jacuzzi",
+      climate: "climate.layzspa_temperature_control", bubbles: "switch.layzspa_airbubbles",
+      heater: "binary_sensor.layzspa_heater", ready: "binary_sensor.layzspa_ready",
+      time_to_ready: "sensor.layzspa_time_to_ready", ambient: "number.layzspa_amb_temp_c",
+      error: "sensor.layzspa_error", connection: "binary_sensor.layzspa_connection",
+      power_switch: "switch.jacuzzi", power: "sensor.jacuzzi_power",
+      energy_today: "sensor.jacuzzi_energia_energy_daily",
+    };
+    const st = (state, attributes = {}) => ({ state, attributes });
+    function base({ mode = "fan_only", target = 37, current = 27, heater = "off", ready = "off",
+                    ttr = "9.8333", err = "0", conn = "on", plug = "on", watts = "2.8", bubbles = "off" } = {}) {
+      return {
+        [CONFIG.climate]: conn === "on"
+          ? st(mode, { temperature: target, current_temperature: current, min_temp: 20, max_temp: 40,
+                       target_temp_step: 1, hvac_modes: ["fan_only", "off", "heat"] })
+          : st("unavailable"),
+        [CONFIG.bubbles]: st(bubbles), [CONFIG.heater]: st(heater), [CONFIG.ready]: st(ready),
+        [CONFIG.time_to_ready]: st(ttr), [CONFIG.ambient]: st("23"), [CONFIG.error]: st(err),
+        [CONFIG.connection]: st(conn), [CONFIG.power_switch]: st(plug), [CONFIG.power]: st(watts),
+        [CONFIG.energy_today]: st("0.38"),
+      };
+    }
+    const SCENARIOS = {
+      "Filtro": base(),
+      "Calentando": base({ mode: "heat", heater: "on", watts: "1942" }),
+      "Listo": base({ mode: "heat", current: 37, ready: "on", watts: "40" }),
+      "Sin corriente": base({ plug: "off", conn: "off", watts: "0" }),
+      "Diferencial saltado": base({ conn: "off", watts: "0" }),
+      "Placa caída": base({ conn: "off", watts: "2.8" }),
+      "Error E02": base({ mode: "heat", heater: "on", err: "2", watts: "1942", bubbles: "on" }),
+    };
+    const log = document.getElementById("log");
+    await customElements.whenDefined("lay-z-spa-card");
+    for (const [title, states] of Object.entries(SCENARIOS)) {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `<h3>${title}</h3>`;
+      const card = document.createElement("lay-z-spa-card");
+      card.setConfig(CONFIG);
+      const hass = {
+        states, language: "es",
+        callService(domain, service, data) {
+          log.textContent += `[${title}] ${domain}.${service} ${JSON.stringify(data)}\n`;
+          const s = { ...hass.states };
+          const id = data.entity_id;
+          if (domain === "climate" && service === "set_hvac_mode") s[id] = { ...s[id], state: data.hvac_mode };
+          if (domain === "climate" && service === "set_temperature")
+            s[id] = { ...s[id], attributes: { ...s[id].attributes, temperature: data.temperature } };
+          if (domain === "switch" && service === "toggle")
+            s[id] = { ...s[id], state: s[id].state === "on" ? "off" : "on" };
+          hass.states = s;
+          card.hass = { ...hass };
+        },
+      };
+      card.hass = hass;
+      wrap.appendChild(card);
+      document.getElementById("grid").appendChild(wrap);
+    }
+  </script>
+</body>
+</html>
