@@ -1,0 +1,32 @@
+{
+  "name": "lay-z-spa-card",
+  "version": "0.1.0",
+  "description": "Tarjeta Lovelace para gestionar un jacuzzi Lay-Z-Spa (firmware visualapproach) en Home Assistant",
+  "type": "module",
+  "main": "dist/lay-z-spa-card.js",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "preview": "http-server . -p 8765 -c-1 --cors"
+  },
+  "keywords": ["home-assistant", "lovelace", "custom-card", "lay-z-spa", "jacuzzi", "hot-tub"],
+  "author": "Serweck",
+  "license": "MIT",
+  "dependencies": {
+    "custom-card-helpers": "^1.9.0",
+    "lit": "^3.1.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "http-server": "^14.1.1",
+    "rollup": "^4.13.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5",
+    "vitest": "^2.1.0"
+  }
+}
