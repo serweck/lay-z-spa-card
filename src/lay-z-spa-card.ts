@@ -10,8 +10,10 @@ import {
   errorCode,
   formatPower,
   numberOf,
+  pendingTarget,
   readyView,
   toNumber,
+  type PendingTarget,
   type States,
 } from "./status";
 import {
@@ -58,6 +60,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   @state() private config!: LayZSpaCardConfig;
   @state() private _dragging = false;
   @state() private _dragTemp: number | null = null;
+  /** Objetivo enviado que HA aun no ha confirmado (base de −/+ y valor mostrado). */
+  @state() private _pending: PendingTarget | null = null;
 
   private _valueAngle = 0;
   private _dragPointerId: number | null = null;
@@ -88,7 +92,9 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
 
   protected shouldUpdate(changed: PropertyValues): boolean {
     return (
-      changed.has("config") || changed.has("hass") || changed.has("_dragging") || changed.has("_dragTemp")
+      changed.has("config") || changed.has("hass") || changed.has("_dragging") ||
+      changed.has("_dragTemp") ||
+      changed.has("_pending")
     );
   }
 
@@ -112,7 +118,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const dotColor = ok && meta ? meta.dot : "#4a4b4f";
     const { min, max } = dialRange(climate.attributes);
     const target = toNumber(climate.attributes.temperature);
-    const liveTarget = this._dragTemp ?? target ?? min;
+    const pending = pendingTarget(this._pending, target, Date.now());
+    const liveTarget = this._dragTemp ?? pending ?? target ?? min;
     const current = ok ? toNumber(climate.attributes.current_temperature) : null;
     const heaterOn = ok && !!this.config.heater && states[this.config.heater]?.state === "on";
 
@@ -173,9 +180,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
 
   private _renderCenter(label: string, target: number, current: number | null): TemplateResult {
     return html`
-      <div class="mode-name">${label}</div>
-      <div class="target">
-        <span class="int">${Math.round(target)}</span><span class="unit">°C</span>
+      <div class="center-tap clickable" title="Ver detalle" @click=${() => this._openMoreInfo(this.config.climate)}>
+        <div class="mode-name">${label}</div>
+        <div class="target">
+          <span class="int">${Math.round(target)}</span><span class="unit">°C</span>
+        </div>
       </div>
       ${current !== null
         ? html`<div class="current clickable" title="Ver histórico" @click=${() => this._openMoreInfo(this.config.climate)}>
@@ -272,10 +281,16 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const climate = this._states[this.config.climate];
     if (!climate) return;
     const { min, max, step } = dialRange(climate.attributes);
-    const cur = toNumber(climate.attributes.temperature) ?? min;
+    const actual = toNumber(climate.attributes.temperature);
+    const cur = pendingTarget(this._pending, actual, Date.now()) ?? actual ?? min;
     const next = clampTarget(cur + dir * step, min, max, step);
     if (next === cur) return;
-    this.hass.callService("climate", "set_temperature", { entity_id: this.config.climate, temperature: next });
+    this._sendTarget(next);
+  }
+
+  private _sendTarget(value: number): void {
+    this._pending = { value, at: Date.now() };
+    this.hass.callService("climate", "set_temperature", { entity_id: this.config.climate, temperature: value });
   }
 
   private _openMoreInfo(entityId?: string): void {
@@ -335,13 +350,9 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       this._dragPointerId = null;
     }
     const climate = this._states[this.config.climate];
-    const current = climate ? toNumber(climate.attributes.temperature) : null;
-    if (this._dragTemp !== null && this._dragTemp !== current) {
-      this.hass.callService("climate", "set_temperature", {
-        entity_id: this.config.climate,
-        temperature: this._dragTemp,
-      });
-    }
+    const actual = climate ? toNumber(climate.attributes.temperature) : null;
+    const shown = pendingTarget(this._pending, actual, Date.now()) ?? actual;
+    if (this._dragTemp !== null && this._dragTemp !== shown) this._sendTarget(this._dragTemp);
     this._dragTemp = null;
   }
 
@@ -451,6 +462,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       pointer-events: none;
       text-align: center;
       padding: 0 22%;
+    }
+    .center-tap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .mode-name {
       font-size: 1.05rem;

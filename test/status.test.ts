@@ -8,6 +8,8 @@ import {
   formatPower,
   readyView,
   dialRange,
+  pendingTarget,
+  PENDING_TIMEOUT_MS,
   type States,
 } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
@@ -190,5 +192,24 @@ describe("dialRange", () => {
       max: 40,
       step: 1,
     });
+  });
+});
+
+describe("pendingTarget", () => {
+  const t0 = 1_000_000;
+  it("sin pendiente, null", () => {
+    expect(pendingTarget(null, 37, t0)).toBeNull();
+  });
+  it("mantiene el valor enviado mientras HA no lo confirma (pulsaciones rapidas en +)", () => {
+    expect(pendingTarget({ value: 39, at: t0 }, 38, t0 + 1500)).toBe(39);
+  });
+  it("se resuelve cuando HA confirma el valor", () => {
+    expect(pendingTarget({ value: 39, at: t0 }, 39, t0 + 2000)).toBeNull();
+  });
+  it("caduca si HA nunca lo confirma", () => {
+    expect(pendingTarget({ value: 39, at: t0 }, 37, t0 + PENDING_TIMEOUT_MS + 1)).toBeNull();
+  });
+  it("con objetivo sin dato sigue pendiente", () => {
+    expect(pendingTarget({ value: 30, at: t0 }, null, t0 + 100)).toBe(30);
   });
 });

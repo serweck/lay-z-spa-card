@@ -112,3 +112,19 @@ export function dialRange(attrs: Record<string, unknown>): { min: number; max: n
   const step = rawStep !== null && rawStep > 0 ? rawStep : 1;
   return { min, max, step };
 }
+
+/** Objetivo enviado a HA que aun no ha vuelto confirmado por MQTT. */
+export interface PendingTarget {
+  value: number;
+  at: number;
+}
+export const PENDING_TIMEOUT_MS = 10000;
+
+/** Valor pendiente que debe mostrarse y usarse como base de −/+, o null si ya no aplica
+ *  (HA lo confirmo o caduco). Evita perder pulsaciones rapidas y el salto atras al soltar. */
+export function pendingTarget(p: PendingTarget | null, actual: number | null, now: number): number | null {
+  if (!p) return null;
+  if (actual !== null && actual === p.value) return null;
+  if (now - p.at > PENDING_TIMEOUT_MS) return null;
+  return p.value;
+}
