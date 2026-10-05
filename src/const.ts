@@ -1,6 +1,6 @@
 import type { EntityKey } from "./types";
 
-export const CARD_VERSION = "0.1.0";
+export const CARD_VERSION = "0.1.1";
 export const CARD_TAG = "lay-z-spa-card";
 export const EDITOR_TAG = "lay-z-spa-card-editor";
 

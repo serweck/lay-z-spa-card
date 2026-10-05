@@ -128,3 +128,29 @@ export function pendingTarget(p: PendingTarget | null, actual: number | null, no
   if (now - p.at > PENDING_TIMEOUT_MS) return null;
   return p.value;
 }
+
+/** Objetivo a mostrar: el que se arrastra, el pendiente de confirmar o el real. null = sin dato. */
+export function displayTarget(drag: number | null, pending: number | null, actual: number | null): number | null {
+  return drag ?? pending ?? actual;
+}
+
+/** Valor que hay que enviar al soltar el arrastre, o null si no hay que enviar nada. */
+export function dragResult(drag: number | null, shown: number | null, available: boolean): number | null {
+  if (!available || drag === null || drag === shown) return null;
+  return drag;
+}
+
+/** Temperatura con un decimal y coma, sin ",0" (23,5 · 27). */
+export function formatTemp(v: number): string {
+  const r = Math.round(v * 10) / 10;
+  return (Number.isInteger(r) ? String(r) : r.toFixed(1)).replace(".", ",");
+}
+
+export type BubblesState = "none" | "on" | "off" | "unavailable";
+
+export function bubblesState(states: States, cfg: LayZSpaCardConfig): BubblesState {
+  if (!cfg.bubbles) return "none";
+  const e = states[cfg.bubbles];
+  if (!isValid(e)) return "unavailable";
+  return e.state === "on" ? "on" : "off";
+}

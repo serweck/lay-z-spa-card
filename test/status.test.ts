@@ -10,6 +10,10 @@ import {
   dialRange,
   pendingTarget,
   PENDING_TIMEOUT_MS,
+  displayTarget,
+  dragResult,
+  formatTemp,
+  bubblesState,
   type States,
 } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
@@ -211,5 +215,53 @@ describe("pendingTarget", () => {
   });
   it("con objetivo sin dato sigue pendiente", () => {
     expect(pendingTarget({ value: 30, at: t0 }, null, t0 + 100)).toBe(30);
+  });
+});
+
+describe("displayTarget", () => {
+  it("prioridad: arrastre, pendiente, objetivo real", () => {
+    expect(displayTarget(30, 38, 37)).toBe(30);
+    expect(displayTarget(null, 38, 37)).toBe(38);
+    expect(displayTarget(null, null, 37)).toBe(37);
+  });
+  it("sin objetivo no inventa un valor (no muestra el minimo)", () => {
+    expect(displayTarget(null, null, null)).toBeNull();
+  });
+});
+
+describe("dragResult", () => {
+  it("envia si cambia y la tarjeta esta disponible", () => {
+    expect(dragResult(36, 37, true)).toBe(36);
+  });
+  it("no envia si no cambia o no se arrastro", () => {
+    expect(dragResult(37, 37, true)).toBeNull();
+    expect(dragResult(null, 37, true)).toBeNull();
+  });
+  it("no envia si la placa cae a mitad del arrastre", () => {
+    expect(dragResult(36, 37, false)).toBeNull();
+  });
+});
+
+describe("formatTemp", () => {
+  it("redondea a un decimal con coma y quita el ,0", () => {
+    expect(formatTemp(23.4567)).toBe("23,5");
+    expect(formatTemp(27)).toBe("27");
+    expect(formatTemp(22.04)).toBe("22");
+    expect(formatTemp(-1.26)).toBe("-1,3");
+  });
+});
+
+describe("bubblesState", () => {
+  const bcfg: LayZSpaCardConfig = { type: "x", climate: "climate.spa", bubbles: "switch.b" };
+  it("none si no esta configurado", () => {
+    expect(bubblesState(base(), { type: "x", climate: "climate.spa" })).toBe("none");
+  });
+  it("on / off", () => {
+    expect(bubblesState(base({ "switch.b": s("on") }), bcfg)).toBe("on");
+    expect(bubblesState(base({ "switch.b": s("off") }), bcfg)).toBe("off");
+  });
+  it("unavailable si el switch no tiene dato o no existe", () => {
+    expect(bubblesState(base({ "switch.b": s("unavailable") }), bcfg)).toBe("unavailable");
+    expect(bubblesState(base(), bcfg)).toBe("unavailable");
   });
 });

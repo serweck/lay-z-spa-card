@@ -4,6 +4,18 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.1.1] - 2026-10-05
+
+### Corregido
+- Si el termostato no tiene objetivo, el dial muestra `--` en vez de 20 °C y no pinta la bolita.
+- Al soltar un arrastre no se envía nada si la placa ha dejado de estar disponible a mitad.
+- Un segundo dedo que se levanta ya no termina el arrastre del primero.
+- Las temperaturas se redondean a un decimal (`23,5 °C`, `27 °C`).
+- El botón de burbujas se desactiva si el interruptor no tiene datos.
+
+### Cambiado
+- Quitado código que no hacía nada (clase `off` del dial y un `shouldUpdate` igual al de Lit).
+
 ## [0.1.0] - 2026-10-05
 
 ### Añadido
