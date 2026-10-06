@@ -1,5 +1,5 @@
 import type { LayZSpaCardConfig } from "./types";
-import { dialRange, isValid, numberOf, toNumber, type States } from "./status";
+import { dialRange, isValid, numberOf, toNumber, type ReadyView, type States } from "./status";
 
 export type TargetSource = {
   kind: "climate" | "helper";
@@ -86,4 +86,12 @@ export function maintenanceView(states: States, cfg: LayZSpaCardConfig) {
 export function gridExtraW(states: States, cfg: LayZSpaCardConfig): number | null {
   const w = numberOf(cfg.grid_extra ? states[cfg.grid_extra] : undefined);
   return w !== null && w > 0 ? w : null;
+}
+
+/** Con el planificador, "Listo" se refiere a la temperatura del dial (deseada), no al objetivo de la placa
+ *  (que de noche puede ser el de valle, más bajo). El "Listo en" se deja tal cual: es el avance real. */
+export function readyForTarget(ready: ReadyView, src: TargetSource, current: number | null): ReadyView {
+  if (src.kind !== "helper" || ready.kind !== "ready") return ready;
+  if (current === null || src.value === null || current < src.value) return { kind: "none" };
+  return ready;
 }

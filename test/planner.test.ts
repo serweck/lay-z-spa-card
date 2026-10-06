@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -113,5 +113,24 @@ describe("gridExtraW", () => {
     expect(gridExtraW(base(), cfg)).toBe(1950);
     expect(gridExtraW(base({ "sensor.extra": s("0") }), cfg)).toBeNull();
     expect(gridExtraW(base({ "sensor.extra": s("unavailable") }), cfg)).toBeNull();
+  });
+});
+
+describe("readyForTarget (revisión: 'Listo' con el planificador)", () => {
+  const helper = { kind: "helper" as const, entity: "input_number.deseada", value: 37, min: 20, max: 40, step: 1, caption: "deseada" };
+  it("la placa está lista a 34 (valle) pero la deseada es 37: no decir 'Listo'", () => {
+    expect(readyForTarget({ kind: "ready" }, helper, 34)).toEqual({ kind: "none" });
+  });
+  it("con el agua en la deseada, 'Listo'", () => {
+    expect(readyForTarget({ kind: "ready" }, helper, 37)).toEqual({ kind: "ready" });
+  });
+  it("sin dato de agua o de deseada, no afirmar 'Listo'", () => {
+    expect(readyForTarget({ kind: "ready" }, helper, null)).toEqual({ kind: "none" });
+    expect(readyForTarget({ kind: "ready" }, { ...helper, value: null }, 37)).toEqual({ kind: "none" });
+  });
+  it("con el climate (planificador apagado) no cambia nada, ni el 'Listo en'", () => {
+    const climate = { ...helper, kind: "climate" as const, caption: null };
+    expect(readyForTarget({ kind: "ready" }, climate, 34)).toEqual({ kind: "ready" });
+    expect(readyForTarget({ kind: "eta", text: "2 h" }, helper, 30)).toEqual({ kind: "eta", text: "2 h" });
   });
 });

@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { gridExtraW, maintenanceView, planView, targetCall, targetSource, usageView } from "./planner";
+import { gridExtraW, maintenanceView, planView, readyForTarget, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -223,7 +223,9 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   private _renderInfo(): TemplateResult {
     const states = this._states;
     const ambient = numberOf(this.config.ambient ? states[this.config.ambient] : undefined);
-    const ready = readyView(states, this.config);
+    const climate = states[this.config.climate];
+    const water = climate ? toNumber(climate.attributes.current_temperature) : null;
+    const ready = readyForTarget(readyView(states, this.config), targetSource(states, this.config), water);
     const err = errorCode(states, this.config);
     return html`
       <div class="info">

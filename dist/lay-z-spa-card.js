@@ -72,16 +72,16 @@ function t(t,e,n,i){var s,o=arguments.length,r=o<3?e:null===i?i=Object.getOwnPro
       <ha-icon class="unavail-icon" icon=${e.icon}></ha-icon>
       <div class="unavail-title">${e.title}</div>
       <div class="unavail-detail">${e.detail}</div>
-    `}_renderInfo(){const t=this._states,e=Et(this.config.ambient?t[this.config.ambient]:void 0),n=function(t,e){const n=t[e.climate];if(!n||"heat"!==n.state)return{kind:"none"};const i=St(t,e.ready);if(At(i)){if("on"===i.state)return{kind:"ready"}}else{const t=wt(n.attributes.current_temperature),e=wt(n.attributes.temperature);if(null!==t&&null!==e&&t>=e)return{kind:"ready"}}const s=Et(St(t,e.time_to_ready));return null===s||s<=0||s>96?{kind:"none"}:{kind:"eta",text:zt(s)}}(t,this.config),i=function(t,e){const n=Et(St(t,e.error));return null===n||0===n?null:`E${String(Math.trunc(n)).padStart(2,"0")}`}(t,this.config);return F`
+    `}_renderInfo(){const t=this._states,e=Et(this.config.ambient?t[this.config.ambient]:void 0),n=t[this.config.climate],i=n?wt(n.attributes.current_temperature):null,s=function(t,e,n){return"helper"!==e.kind||"ready"!==t.kind?t:null===n||null===e.value||n<e.value?{kind:"none"}:t}(function(t,e){const n=t[e.climate];if(!n||"heat"!==n.state)return{kind:"none"};const i=St(t,e.ready);if(At(i)){if("on"===i.state)return{kind:"ready"}}else{const t=wt(n.attributes.current_temperature),e=wt(n.attributes.temperature);if(null!==t&&null!==e&&t>=e)return{kind:"ready"}}const s=Et(St(t,e.time_to_ready));return null===s||s<=0||s>96?{kind:"none"}:{kind:"eta",text:zt(s)}}(t,this.config),Jt(t,this.config),i),o=function(t,e){const n=Et(St(t,e.error));return null===n||0===n?null:`E${String(Math.trunc(n)).padStart(2,"0")}`}(t,this.config);return F`
       <div class="info">
         ${null!==e?F`<span class="item clickable" @click=${()=>this._openMoreInfo(this.config.ambient)}>
               <ha-icon icon="mdi:home-thermometer-outline"></ha-icon>Amb. ${jt(e)} °C
             </span>`:J}
-        ${"ready"===n.kind?F`<span class="chip ready"><ha-icon icon="mdi:check-circle"></ha-icon>Listo</span>`:"eta"===n.kind?F`<span class="item clickable" @click=${()=>this._openMoreInfo(this.config.time_to_ready)}>
-              <ha-icon icon="mdi:timer-sand"></ha-icon>Listo en ${n.text}
+        ${"ready"===s.kind?F`<span class="chip ready"><ha-icon icon="mdi:check-circle"></ha-icon>Listo</span>`:"eta"===s.kind?F`<span class="item clickable" @click=${()=>this._openMoreInfo(this.config.time_to_ready)}>
+              <ha-icon icon="mdi:timer-sand"></ha-icon>Listo en ${s.text}
             </span>`:J}
       </div>
-      ${i?F`<div class="warnings"><span class="chip error"><ha-icon icon="mdi:alert"></ha-icon>Error ${i}</span></div>`:J}
+      ${o?F`<div class="warnings"><span class="chip error"><ha-icon icon="mdi:alert"></ha-icon>Error ${o}</span></div>`:J}
     `}_renderModes(t,e,n){const i=Array.isArray(n)?n:te,s=function(t,e){if(!e.bubbles)return"none";const n=t[e.bubbles];return At(n)?"on"===n.state?"on":"off":"unavailable"}(this._states,this.config);return F`
       <div class="bar">
         <div class="modes">
