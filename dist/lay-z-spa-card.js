@@ -13,7 +13,7 @@ function t(t,e,n,i){var o,s=arguments.length,r=s<3?e:null===i?i=Object.getOwnPro
       font-size: 0.85em;
       margin-top: 8px;
     }
-  `,t([mt({attribute:!1})],Kt.prototype,"hass",void 0),t([ft()],Kt.prototype,"_config",void 0),Kt=t([ht(vt)],Kt),console.info("%c LAY-Z-SPA-CARD %c v0.2.2 ","color: white; background: #ff8100; font-weight: 700;","color: #ff8100; background: #1c1c1c; font-weight: 700;"),window.customCards=window.customCards||[],window.customCards.push({type:yt,name:"Lay-Z-Spa Card",description:"Gestión del jacuzzi: temperatura, modos, burbujas, tiempo hasta listo y consumo",preview:!0});const Xt="#6f7176",Qt={off:{icon:"mdi:power",label:"Apagado",color:Xt,dot:"#4a4b4f"},fan_only:{icon:"mdi:fan",label:"Filtro",color:"#2b9af9",dot:"#15578f"},heat:{icon:"mdi:fire",label:"Calor",color:"#ff8100",dot:"#9c4e00"}},te=["off","fan_only","heat"];let ee=class extends lt{constructor(){super(...arguments),this._dragging=!1,this._dragTemp=null,this._pending=null,this._pendingEntity=null,this._valueAngle=0,this._dragPointerId=null,this._boundMove=t=>this._onPointerMove(t),this._boundUp=t=>this._onPointerUp(t),this._toggleBubbles=()=>{this.config.bubbles&&this.hass.callService("switch","toggle",{entity_id:this.config.bubbles})},this._togglePlanner=()=>{this.config.planner&&this.hass.callService("input_boolean","toggle",{entity_id:this.config.planner})},this._setReadyTime=t=>{const e=t.target.value;this.config.ready_time&&/^\d{2}:\d{2}$/.test(e)&&this.hass.callService("input_datetime","set_datetime",{entity_id:this.config.ready_time,time:`${e}:00`})}}static async getConfigElement(){return document.createElement(vt)}static getStubConfig(t){return{name:"Jacuzzi",...Bt(t?Object.keys(t.states):[])}}setConfig(t){if(!t.climate)throw new Error("Falta 'climate'");this.config={...t}}getCardSize(){return 6}disconnectedCallback(){super.disconnectedCallback(),this._removeWindowListeners()}get _states(){return this.hass.states}render(){if(!this.hass||!this.config)return J;const t=this._states,e=t[this.config.climate];if(!e)return F`<ha-card><div class="warn">Entidad no encontrada: ${this.config.climate}</div></ha-card>`;const n=kt(t,this.config),i="ok"===n,o=e.state,s=Qt[o],r=i&&s?s.color:Xt,a=i&&s?s.dot:"#4a4b4f",c=Jt(t,this.config),{min:l,max:d}=c,h=jt(this._pendingFor(c.entity),c.value,Date.now()),p=function(t,e,n){return t??e??n}(this._dragTemp,h,c.value),u=i?wt(e.attributes.current_temperature):null,m=i&&!!this.config.heater&&"on"===t[this.config.heater]?.state,f=null!==p,g=Ht(p??l,l,d);this._valueAngle=f?g%360:-999;const _=It(100,100,Tt,g),b=null!==u?Ht(u,l,d):null,y=null!==b?It(100,100,Tt,b):null,v=null!==b?Math.min(g,b):Ot,$=null!==b?Math.max(g,b):g,x=`grad-${o}`,w=s?"heat"===o&&m?"Calentando":s.label:o,A=St(this.config.power?t[this.config.power]:void 0),S=function(t,e){const n=e.planner?t[e.planner]:void 0;return e.planner&&At(n)?{entity:e.planner,on:"on"===n.state}:null}(t,this.config);return F`
+  `,t([mt({attribute:!1})],Kt.prototype,"hass",void 0),t([ft()],Kt.prototype,"_config",void 0),Kt=t([ht(vt)],Kt),console.info("%c LAY-Z-SPA-CARD %c v0.2.3 ","color: white; background: #ff8100; font-weight: 700;","color: #ff8100; background: #1c1c1c; font-weight: 700;"),window.customCards=window.customCards||[],window.customCards.push({type:yt,name:"Lay-Z-Spa Card",description:"Gestión del jacuzzi: temperatura, modos, burbujas, tiempo hasta listo y consumo",preview:!0});const Xt="#6f7176",Qt={off:{icon:"mdi:power",label:"Apagado",color:Xt,dot:"#4a4b4f"},fan_only:{icon:"mdi:fan",label:"Filtro",color:"#2b9af9",dot:"#15578f"},heat:{icon:"mdi:fire",label:"Calor",color:"#ff8100",dot:"#9c4e00"}},te=["off","fan_only","heat"];let ee=class extends lt{constructor(){super(...arguments),this._dragging=!1,this._dragTemp=null,this._pending=null,this._pendingEntity=null,this._valueAngle=0,this._dragPointerId=null,this._boundMove=t=>this._onPointerMove(t),this._boundUp=t=>this._onPointerUp(t),this._toggleBubbles=()=>{this.config.bubbles&&this.hass.callService("switch","toggle",{entity_id:this.config.bubbles})},this._togglePlanner=()=>{this.config.planner&&this.hass.callService("input_boolean","toggle",{entity_id:this.config.planner})},this._setReadyTime=t=>{const e=t.target.value;this.config.ready_time&&/^\d{2}:\d{2}$/.test(e)&&this.hass.callService("input_datetime","set_datetime",{entity_id:this.config.ready_time,time:`${e}:00`})}}static async getConfigElement(){return document.createElement(vt)}static getStubConfig(t){return{name:"Jacuzzi",...Bt(t?Object.keys(t.states):[])}}setConfig(t){if(!t.climate)throw new Error("Falta 'climate'");this.config={...t}}getCardSize(){return 6}disconnectedCallback(){super.disconnectedCallback(),this._removeWindowListeners()}get _states(){return this.hass.states}render(){if(!this.hass||!this.config)return J;const t=this._states,e=t[this.config.climate];if(!e)return F`<ha-card><div class="warn">Entidad no encontrada: ${this.config.climate}</div></ha-card>`;const n=kt(t,this.config),i="ok"===n,o=e.state,s=Qt[o],r=i&&s?s.color:Xt,a=i&&s?s.dot:"#4a4b4f",c=Jt(t,this.config),{min:l,max:d}=c,h=jt(this._pendingFor(c.entity),c.value,Date.now()),p=function(t,e,n){return t??e??n}(this._dragTemp,h,c.value),u=i?wt(e.attributes.current_temperature):null,m=i&&!!this.config.heater&&"on"===t[this.config.heater]?.state,f=null!==p,g=Ht(p??l,l,d);this._valueAngle=f?g%360:-999;const _=It(100,100,Tt,g),b=null!==u?Ht(u,l,d):null,y=null!==b?It(100,100,Tt,b):null,v=null!==b?Math.min(g,b):Ot,$=null!==b?Math.max(g,b):g,x=`grad-${o}`,w=s?"heat"===o&&m?"Calentando":s.label:o,A=St(this.config.power?t[this.config.power]:void 0),S=function(t,e){const n=e.planner?t[e.planner]:void 0;return e.planner&&At(n)?{entity:e.planner,on:"on"===n.state}:null}(t,this.config);return F`
       <ha-card style="--accent:${r}">
         <div class="header">
           <span class="title"><ha-icon icon="mdi:hot-tub"></ha-icon>${this.config.name??"Jacuzzi"}</span>
@@ -119,15 +119,23 @@ function t(t,e,n,i){var o,s=arguments.length,r=s<3?e:null===i?i=Object.getOwnPro
       ${n?F`<div class="usage">
             ${n.options.map(t=>F`<button class="${t===n.current?"active":""}" @click=${()=>this._setUsage(t)}>${t}</button>`)}
           </div>`:J}
-      ${i?F`<div class="maint">
-            <span>Mantenimiento</span>
-            <button class="round sm" @click=${()=>this._stepMaintenance(-1)}><ha-icon icon="mdi:minus"></ha-icon></button>
-            <span class="maint-value">${null!==i.value?Ut(i.value):"--"} °C</span>
-            <button class="round sm" @click=${()=>this._stepMaintenance(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
-          </div>`:J}
-      ${o?F`<div class="maint">
-            <span>Baño a las</span>
-            <input class="ready-time" type="time" step="900" .value=${o.value} @change=${this._setReadyTime} />
+      ${i||o?F`<div class="settings">
+            ${i?F`<div class="setting">
+                  <ha-icon icon="mdi:wrench-outline"></ha-icon>
+                  <span class="setting-label">Mantenimiento</span>
+                  <div class="pill">
+                    <button class="pill-btn" title="Bajar" @click=${()=>this._stepMaintenance(-1)}><ha-icon icon="mdi:minus"></ha-icon></button>
+                    <span class="pill-value">${null!==i.value?Ut(i.value):"--"} °C</span>
+                    <button class="pill-btn" title="Subir" @click=${()=>this._stepMaintenance(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
+                  </div>
+                </div>`:J}
+            ${o?F`<div class="setting">
+                  <ha-icon icon="mdi:clock-outline"></ha-icon>
+                  <span class="setting-label">Baño a las</span>
+                  <div class="pill">
+                    <input class="ready-time" type="time" step="900" .value=${o.value} @change=${this._setReadyTime} />
+                  </div>
+                </div>`:J}
           </div>`:J}
     `:J}_setUsage(t){this.config.usage&&this.hass.callService("input_select","select_option",{entity_id:this.config.usage,option:t})}_stepMaintenance(t){const e=Zt(this._states,this.config);if(!e||null===e.value)return;const n=Rt(e.value+t*e.step,e.min,e.max,e.step);n!==e.value&&this.hass.callService("input_number","set_value",{entity_id:e.entity,value:n})}_openMoreInfo(t){t&&this.hass?.states[t]&&bt(this,"hass-more-info",{entityId:t})}_svg(){return this.renderRoot.querySelector("svg.dial")}_onPointerDown(t){if("ok"!==kt(this._states,this.config))return;const e=this._svg();if(!e)return;const n=e.getBoundingClientRect();if(!n.width)return;if(function(t,e,n,i){const o=Math.hypot(t,e);if(Math.abs(o-Tt*n)>21*n)return!1;let s=Math.abs(Dt(t,e)-i);return s>180&&(s=360-s),s<=22}(t.clientX-(n.left+n.width/2),t.clientY-(n.top+n.height/2),n.width/200,this._valueAngle)){t.preventDefault(),this._dragging=!0,this._dragPointerId=t.pointerId;try{e.setPointerCapture(t.pointerId)}catch(t){}window.addEventListener("pointermove",this._boundMove),window.addEventListener("pointerup",this._boundUp),window.addEventListener("pointercancel",this._boundUp)}}_onPointerMove(t){if(!this._dragging||t.pointerId!==this._dragPointerId)return;t.cancelable&&t.preventDefault();const e=this._svg();if(!e)return;const n=e.getBoundingClientRect(),i=Dt(t.clientX-(n.left+n.width/2),t.clientY-(n.top+n.height/2)),{min:o,max:s,step:r}=Jt(this._states,this.config);this._dragTemp=Lt(i,o,s,r)}_onPointerUp(t){if(!this._dragging||t.pointerId!==this._dragPointerId)return;if(this._dragging=!1,this._removeWindowListeners(),null!==this._dragPointerId){try{this._svg()?.releasePointerCapture(this._dragPointerId)}catch(t){}this._dragPointerId=null}const e=Jt(this._states,this.config),n=jt(this._pendingFor(e.entity),e.value,Date.now())??e.value,i=function(t,e,n){return n&&null!==t&&t!==e?t:null}(this._dragTemp,n,"ok"===kt(this._states,this.config));null!==i&&this._sendTarget(i),this._dragTemp=null}_removeWindowListeners(){window.removeEventListener("pointermove",this._boundMove),window.removeEventListener("pointerup",this._boundUp),window.removeEventListener("pointercancel",this._boundUp)}};ee.styles=r`
     ha-card {
@@ -481,17 +489,58 @@ function t(t,e,n,i){var o,s=arguments.length,r=s<3?e:null===i?i=Object.getOwnPro
       background: var(--primary-color, #03a9f4);
       color: #fff;
     }
-    .maint {
+    .settings {
+      margin-top: 8px;
+      background: var(--secondary-background-color, #2a2a2a);
+      border-radius: 12px;
+      padding: 2px 10px;
+    }
+    .setting {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 8px;
+      gap: 10px;
+      min-height: 40px;
       font-size: 0.85rem;
       color: var(--secondary-text-color);
     }
-    .maint-value {
-      min-width: 48px;
+    .setting + .setting {
+      border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.08));
+    }
+    .setting > ha-icon {
+      --mdc-icon-size: 18px;
+    }
+    .setting-label {
+      flex: 1;
+      color: var(--primary-text-color);
+    }
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--card-background-color, #1c1c1c);
+      border-radius: 9px;
+      padding: 3px;
+    }
+    .pill-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 26px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--secondary-text-color);
+      cursor: pointer;
+    }
+    .pill-btn:hover {
+      background: var(--secondary-background-color, #2a2a2a);
+    }
+    .pill-btn ha-icon {
+      --mdc-icon-size: 16px;
+    }
+    .pill-value {
+      min-width: 46px;
       text-align: center;
       color: var(--primary-text-color);
       font-variant-numeric: tabular-nums;
@@ -500,17 +549,9 @@ function t(t,e,n,i){var o,s=arguments.length,r=s<3?e:null===i?i=Object.getOwnPro
       font: inherit;
       color: var(--primary-text-color);
       background: transparent;
-      border: 1px solid var(--divider-color, #ccc);
-      border-radius: 8px;
-      padding: 2px 6px;
+      border: none;
+      padding: 3px 6px;
       color-scheme: light dark;
-    }
-    button.round.sm {
-      width: 28px;
-      height: 28px;
-      border-width: 1px;
-    }
-    button.round.sm ha-icon {
-      --mdc-icon-size: 16px;
+      font-variant-numeric: tabular-nums;
     }
   `,t([mt({attribute:!1})],ee.prototype,"hass",void 0),t([ft()],ee.prototype,"config",void 0),t([ft()],ee.prototype,"_dragging",void 0),t([ft()],ee.prototype,"_dragTemp",void 0),t([ft()],ee.prototype,"_pending",void 0),t([ft()],ee.prototype,"_pendingEntity",void 0),ee=t([ht(yt)],ee);export{ee as LayZSpaCard};

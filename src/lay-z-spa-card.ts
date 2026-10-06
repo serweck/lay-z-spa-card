@@ -344,18 +344,28 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
             )}
           </div>`
         : nothing}
-      ${maint
-        ? html`<div class="maint">
-            <span>Mantenimiento</span>
-            <button class="round sm" @click=${() => this._stepMaintenance(-1)}><ha-icon icon="mdi:minus"></ha-icon></button>
-            <span class="maint-value">${maint.value !== null ? formatTemp(maint.value) : "--"} °C</span>
-            <button class="round sm" @click=${() => this._stepMaintenance(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
-          </div>`
-        : nothing}
-      ${readyAt
-        ? html`<div class="maint">
-            <span>Baño a las</span>
-            <input class="ready-time" type="time" step="900" .value=${readyAt.value} @change=${this._setReadyTime} />
+      ${maint || readyAt
+        ? html`<div class="settings">
+            ${maint
+              ? html`<div class="setting">
+                  <ha-icon icon="mdi:wrench-outline"></ha-icon>
+                  <span class="setting-label">Mantenimiento</span>
+                  <div class="pill">
+                    <button class="pill-btn" title="Bajar" @click=${() => this._stepMaintenance(-1)}><ha-icon icon="mdi:minus"></ha-icon></button>
+                    <span class="pill-value">${maint.value !== null ? formatTemp(maint.value) : "--"} °C</span>
+                    <button class="pill-btn" title="Subir" @click=${() => this._stepMaintenance(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
+                  </div>
+                </div>`
+              : nothing}
+            ${readyAt
+              ? html`<div class="setting">
+                  <ha-icon icon="mdi:clock-outline"></ha-icon>
+                  <span class="setting-label">Baño a las</span>
+                  <div class="pill">
+                    <input class="ready-time" type="time" step="900" .value=${readyAt.value} @change=${this._setReadyTime} />
+                  </div>
+                </div>`
+              : nothing}
           </div>`
         : nothing}
     `;
@@ -806,17 +816,58 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       background: var(--primary-color, #03a9f4);
       color: #fff;
     }
-    .maint {
+    .settings {
+      margin-top: 8px;
+      background: var(--secondary-background-color, #2a2a2a);
+      border-radius: 12px;
+      padding: 2px 10px;
+    }
+    .setting {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 8px;
+      gap: 10px;
+      min-height: 40px;
       font-size: 0.85rem;
       color: var(--secondary-text-color);
     }
-    .maint-value {
-      min-width: 48px;
+    .setting + .setting {
+      border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.08));
+    }
+    .setting > ha-icon {
+      --mdc-icon-size: 18px;
+    }
+    .setting-label {
+      flex: 1;
+      color: var(--primary-text-color);
+    }
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--card-background-color, #1c1c1c);
+      border-radius: 9px;
+      padding: 3px;
+    }
+    .pill-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 26px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--secondary-text-color);
+      cursor: pointer;
+    }
+    .pill-btn:hover {
+      background: var(--secondary-background-color, #2a2a2a);
+    }
+    .pill-btn ha-icon {
+      --mdc-icon-size: 16px;
+    }
+    .pill-value {
+      min-width: 46px;
       text-align: center;
       color: var(--primary-text-color);
       font-variant-numeric: tabular-nums;
@@ -825,18 +876,10 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       font: inherit;
       color: var(--primary-text-color);
       background: transparent;
-      border: 1px solid var(--divider-color, #ccc);
-      border-radius: 8px;
-      padding: 2px 6px;
+      border: none;
+      padding: 3px 6px;
       color-scheme: light dark;
-    }
-    button.round.sm {
-      width: 28px;
-      height: 28px;
-      border-width: 1px;
-    }
-    button.round.sm ha-icon {
-      --mdc-icon-size: 16px;
+      font-variant-numeric: tabular-nums;
     }
   `;
 }
