@@ -4,6 +4,22 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.0] - 2026-10-06
+
+### Añadido
+- **Planificador del jacuzzi** (claves opcionales `usage`, `desired`, `maintenance`, `plan`, `planner`,
+  `observe`, `grid_extra`). Con el planificador encendido:
+  - el dial y −/+ editan la **temperatura deseada** (uso Hoy/Siempre) o la de **mantenimiento** (uso No),
+    con la leyenda correspondiente bajo el número;
+  - selector **No · Hoy · Siempre**;
+  - línea con el **motivo del plan** (`· red` si autoriza la red; atenuada y con "Observando:" en modo
+    observar);
+  - **mantenimiento** editable con −/+ cuando el uso es Hoy/Siempre.
+- Chip **+W de red** en la cabecera mientras Node-RED importa de la red para el jacuzzi.
+
+### Cambiado
+- Sin las claves nuevas, o con el planificador apagado, la tarjeta se comporta exactamente como la 0.1.1.
+
 ## [0.1.1] - 2026-10-05
 
 ### Corregido

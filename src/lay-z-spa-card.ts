@@ -33,6 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
+import { gridExtraW, maintenanceView, planView, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -66,6 +67,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   @state() private _dragTemp: number | null = null;
   /** Objetivo enviado que HA aun no ha confirmado (base de −/+ y valor mostrado). */
   @state() private _pending: PendingTarget | null = null;
+  /** Entidad a la que pertenece el pendiente: al cambiar el uso, el de la deseada no vale para el mantenimiento. */
+  @state() private _pendingEntity: string | null = null;
 
   private _valueAngle = 0;
   private _dragPointerId: number | null = null;
@@ -112,10 +115,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const meta = MODE_META[mode];
     const accent = ok && meta ? meta.color : GREY;
     const dotColor = ok && meta ? meta.dot : "#4a4b4f";
-    const { min, max } = dialRange(climate.attributes);
-    const target = toNumber(climate.attributes.temperature);
-    const pending = pendingTarget(this._pending, target, Date.now());
-    const shownTarget = displayTarget(this._dragTemp, pending, target);
+    // Con el planificador activo, el dial edita la deseada o el mantenimiento; si no, el objetivo de la placa
+    const src = targetSource(states, this.config);
+    const { min, max } = src;
+    const pending = pendingTarget(this._pendingFor(src.entity), src.value, Date.now());
+    const shownTarget = displayTarget(this._dragTemp, pending, src.value);
     const current = ok ? toNumber(climate.attributes.current_temperature) : null;
     const heaterOn = ok && !!this.config.heater && states[this.config.heater]?.state === "on";
 
@@ -131,6 +135,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
 
     const label = !meta ? mode : mode === "heat" && heaterOn ? "Calentando" : meta.label;
     const power = numberOf(this.config.power ? states[this.config.power] : undefined);
+    const gridExtra = gridExtraW(states, this.config);
 
     return html`
       <ha-card style="--accent:${accent}">
@@ -143,6 +148,15 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
                 @click=${() => this._openMoreInfo(this.config.energy_today || this.config.power)}
               >
                 <ha-icon icon="mdi:flash"></ha-icon>${formatPower(power)} W
+              </button>`
+            : nothing}
+          ${gridExtra !== null
+            ? html`<button
+                class="power grid-extra"
+                title="Importando de la red para el jacuzzi (sin batería)"
+                @click=${() => this._openMoreInfo(this.config.grid_extra)}
+              >
+                <ha-icon icon="mdi:transmission-tower-import"></ha-icon>+${formatPower(gridExtra)} W
               </button>`
             : nothing}
         </div>
@@ -167,21 +181,23 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
                 <circle class="handle ${heaterOn ? "pulse" : ""}" style="stroke:${accent}" cx=${handle.x} cy=${handle.y} r="8" />`
               : nothing}
           </svg>
-          <div class="dial-center">${ok ? this._renderCenter(label, shownTarget, current) : this._renderUnavailable(avail)}</div>
+          <div class="dial-center">${ok ? this._renderCenter(label, shownTarget, current, src.caption) : this._renderUnavailable(avail)}</div>
         </div>
 
-        ${ok ? this._renderInfo() : nothing} ${this._renderModes(ok, mode, climate.attributes.hvac_modes)}
+        ${ok ? this._renderInfo() : nothing} ${ok ? this._renderPlanner() : nothing}
+        ${this._renderModes(ok, mode, climate.attributes.hvac_modes)}
       </ha-card>
     `;
   }
 
-  private _renderCenter(label: string, target: number | null, current: number | null): TemplateResult {
+  private _renderCenter(label: string, target: number | null, current: number | null, caption: string | null): TemplateResult {
     return html`
       <div class="center-tap clickable" title="Ver detalle" @click=${() => this._openMoreInfo(this.config.climate)}>
         <div class="mode-name">${label}</div>
         <div class="target">
           <span class="int">${target !== null ? Math.round(target) : "--"}</span><span class="unit">°C</span>
         </div>
+        ${caption ? html`<div class="caption">${caption}</div>` : nothing}
       </div>
       ${current !== null
         ? html`<div class="current clickable" title="Ver histórico" @click=${() => this._openMoreInfo(this.config.climate)}>
@@ -273,20 +289,70 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     this.hass.callService("switch", "toggle", { entity_id: this.config.bubbles });
   };
 
+  private _pendingFor(entity: string): PendingTarget | null {
+    return this._pendingEntity === entity ? this._pending : null;
+  }
+
   private _step(dir: number): void {
-    const climate = this._states[this.config.climate];
-    if (!climate) return;
-    const { min, max, step } = dialRange(climate.attributes);
-    const actual = toNumber(climate.attributes.temperature);
-    const cur = pendingTarget(this._pending, actual, Date.now()) ?? actual ?? min;
+    const src = targetSource(this._states, this.config);
+    const { min, max, step } = src;
+    const cur = pendingTarget(this._pendingFor(src.entity), src.value, Date.now()) ?? src.value ?? min;
     const next = clampTarget(cur + dir * step, min, max, step);
     if (next === cur) return;
     this._sendTarget(next);
   }
 
   private _sendTarget(value: number): void {
+    const src = targetSource(this._states, this.config);
     this._pending = { value, at: Date.now() };
-    this.hass.callService("climate", "set_temperature", { entity_id: this.config.climate, temperature: value });
+    this._pendingEntity = src.entity;
+    const c = targetCall(src, value);
+    this.hass.callService(c.domain, c.service, c.data);
+  }
+
+  // --- planificador ---
+  private _renderPlanner(): TemplateResult | typeof nothing {
+    const states = this._states;
+    const plan = planView(states, this.config);
+    const usage = usageView(states, this.config);
+    const maint = maintenanceView(states, this.config);
+    if (!plan && !usage && !maint) return nothing;
+    return html`
+      ${plan
+        ? html`<div class="plan ${plan.observing ? "observing" : ""} clickable" title="Plan del jacuzzi" @click=${() => this._openMoreInfo(this.config.plan)}>
+            <ha-icon icon=${plan.observing ? "mdi:eye" : "mdi:robot"}></ha-icon>
+            <span>${plan.observing ? "Observando: " : ""}${plan.text}${plan.grid ? " · red" : ""}</span>
+          </div>`
+        : nothing}
+      ${usage
+        ? html`<div class="usage">
+            ${usage.options.map(
+              (o) => html`<button class="${o === usage.current ? "active" : ""}" @click=${() => this._setUsage(o)}>${o}</button>`
+            )}
+          </div>`
+        : nothing}
+      ${maint
+        ? html`<div class="maint">
+            <span>Mantenimiento</span>
+            <button class="round sm" @click=${() => this._stepMaintenance(-1)}><ha-icon icon="mdi:minus"></ha-icon></button>
+            <span class="maint-value">${maint.value !== null ? formatTemp(maint.value) : "--"} °C</span>
+            <button class="round sm" @click=${() => this._stepMaintenance(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
+          </div>`
+        : nothing}
+    `;
+  }
+
+  private _setUsage(option: string): void {
+    if (!this.config.usage) return;
+    this.hass.callService("input_select", "select_option", { entity_id: this.config.usage, option });
+  }
+
+  private _stepMaintenance(dir: number): void {
+    const m = maintenanceView(this._states, this.config);
+    if (!m || m.value === null) return;
+    const next = clampTarget(m.value + dir * m.step, m.min, m.max, m.step);
+    if (next === m.value) return;
+    this.hass.callService("input_number", "set_value", { entity_id: m.entity, value: next });
   }
 
   private _openMoreInfo(entityId?: string): void {
@@ -325,11 +391,10 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     if (!this._dragging || e.pointerId !== this._dragPointerId) return;
     if (e.cancelable) e.preventDefault();
     const svgEl = this._svg();
-    const climate = this._states[this.config.climate];
-    if (!svgEl || !climate) return;
+    if (!svgEl) return;
     const rect = svgEl.getBoundingClientRect();
     const angle = pointerAngle(e.clientX - (rect.left + rect.width / 2), e.clientY - (rect.top + rect.height / 2));
-    const { min, max, step } = dialRange(climate.attributes);
+    const { min, max, step } = targetSource(this._states, this.config);
     this._dragTemp = valueFromAngle(angle, min, max, step);
   }
 
@@ -346,9 +411,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       }
       this._dragPointerId = null;
     }
-    const climate = this._states[this.config.climate];
-    const actual = climate ? toNumber(climate.attributes.temperature) : null;
-    const shown = pendingTarget(this._pending, actual, Date.now()) ?? actual;
+    const src = targetSource(this._states, this.config);
+    const shown = pendingTarget(this._pendingFor(src.entity), src.value, Date.now()) ?? src.value;
     const send = dragResult(this._dragTemp, shown, availability(this._states, this.config) === "ok");
     if (send !== null) this._sendTarget(send);
     this._dragTemp = null;
@@ -612,6 +676,89 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     .bubbles:disabled {
       opacity: 0.35;
       cursor: default;
+    }
+
+    /* PLANIFICADOR (v0.2.0) */
+    .header {
+      gap: 6px;
+    }
+    .title {
+      flex: 1;
+    }
+    button.grid-extra {
+      color: #26a69a;
+    }
+    .caption {
+      font-size: 0.78rem;
+      color: var(--secondary-text-color);
+      margin-top: -2px;
+    }
+    .plan {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 0.88rem;
+      color: var(--primary-text-color);
+      text-align: center;
+    }
+    .plan ha-icon {
+      --mdc-icon-size: 16px;
+      color: var(--accent);
+      flex: 0 0 auto;
+    }
+    .plan.observing {
+      color: var(--secondary-text-color);
+      font-style: italic;
+    }
+    .plan.observing ha-icon {
+      color: var(--secondary-text-color);
+    }
+    .usage {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      background: var(--secondary-background-color, #2a2a2a);
+      border-radius: 12px;
+      padding: 3px;
+    }
+    .usage button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--secondary-text-color);
+      padding: 6px 4px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .usage button.active {
+      background: var(--primary-color, #03a9f4);
+      color: #fff;
+    }
+    .maint {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--secondary-text-color);
+    }
+    .maint-value {
+      min-width: 48px;
+      text-align: center;
+      color: var(--primary-text-color);
+      font-variant-numeric: tabular-nums;
+    }
+    button.round.sm {
+      width: 28px;
+      height: 28px;
+      border-width: 1px;
+    }
+    button.round.sm ha-icon {
+      --mdc-icon-size: 16px;
     }
   `;
 }

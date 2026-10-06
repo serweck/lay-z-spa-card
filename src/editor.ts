@@ -17,6 +17,13 @@ const SCHEMA = [
   { name: "power_switch", selector: { entity: { domain: "switch" } } },
   { name: "power", selector: { entity: { domain: "sensor" } } },
   { name: "energy_today", selector: { entity: { domain: "sensor" } } },
+  { name: "usage", selector: { entity: { domain: "input_select" } } },
+  { name: "desired", selector: { entity: { domain: "input_number" } } },
+  { name: "maintenance", selector: { entity: { domain: "input_number" } } },
+  { name: "plan", selector: { entity: { domain: "sensor" } } },
+  { name: "planner", selector: { entity: { domain: "input_boolean" } } },
+  { name: "observe", selector: { entity: { domain: "input_boolean" } } },
+  { name: "grid_extra", selector: { entity: { domain: "sensor" } } },
 ];
 
 const LABELS: Record<string, string> = {
@@ -32,6 +39,13 @@ const LABELS: Record<string, string> = {
   power_switch: "Enchufe del jacuzzi, solo lectura (switch)",
   power: "Potencia real en W (sensor)",
   energy_today: "Energía de hoy (sensor)",
+  usage: "Planificador: uso No/Hoy/Siempre (input_select)",
+  desired: "Planificador: temperatura deseada (input_number)",
+  maintenance: "Planificador: temperatura de mantenimiento (input_number)",
+  plan: "Planificador: plan en JSON (sensor)",
+  planner: "Planificador: encendido (input_boolean)",
+  observe: "Planificador: modo observar (input_boolean)",
+  grid_extra: "Importación extra de red en W (sensor)",
 };
 
 @customElement(EDITOR_TAG)
@@ -55,7 +69,7 @@ export class LayZSpaCardEditor extends LitElement implements LovelaceCardEditor 
         .computeLabel=${this._computeLabel}
         @value-changed=${this._valueChanged}
       ></ha-form>
-      <p class="hint">Solo el termostato es obligatorio; lo que falte se oculta en la tarjeta.</p>
+      <p class="hint">Solo el termostato es obligatorio; lo que falte se oculta en la tarjeta. Con el planificador encendido, el dial edita la temperatura deseada o la de mantenimiento.</p>
     `;
   }
 

@@ -89,6 +89,9 @@ describe("usageView", () => {
   it("opciones reales del input_select", () => {
     expect(usageView(base({ "input_select.uso": s("Fin de semana", { options: ["No", "Fin de semana"] }) }), cfg)).toEqual({ current: "Fin de semana", options: ["No", "Fin de semana"] });
   });
+  it("con el planificador apagado no hay selector (como la 0.1.1)", () => {
+    expect(usageView(base({ "input_boolean.plan": s("off") }), cfg)).toBeNull();
+  });
   it("sin entidad o sin dato: null", () => {
     expect(usageView(base(), { type: "x", climate: "climate.spa" })).toBeNull();
     expect(usageView(base({ "input_select.uso": s("unavailable") }), cfg)).toBeNull();

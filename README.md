@@ -33,7 +33,7 @@ el servidor.
 **Opción B — Manual:**
 
 1. Copia `dist/lay-z-spa-card.js` a `config/www/`.
-2. Añádelo como recurso (Ajustes → Paneles → ⋮ → Recursos): URL `/local/lay-z-spa-card.js?v=0.1.1`,
+2. Añádelo como recurso (Ajustes → Paneles → ⋮ → Recursos): URL `/local/lay-z-spa-card.js?v=0.2.0`,
    tipo **Módulo JavaScript**.
 3. Recarga el navegador (Ctrl+F5).
 
@@ -71,6 +71,31 @@ energy_today: sensor.jacuzzi_energia_energy_daily
 | `power_switch` | No | Detectar el enchufe apagado (solo lectura) |
 | `power` | No | Consumo en la cabecera y detectar el diferencial saltado |
 | `energy_today` | No | Detalle que se abre al pulsar el consumo |
+
+## Planificador (v0.2.0, opcional)
+
+Si tienes el planificador del jacuzzi en Home Assistant (helpers + `sensor.jacuzzi_plan`), añade:
+
+```yaml
+usage: input_select.jacuzzi_uso
+desired: input_number.jacuzzi_temp_deseada
+maintenance: input_number.jacuzzi_temp_mantenimiento
+plan: sensor.jacuzzi_plan
+planner: input_boolean.jacuzzi_planificador
+observe: input_boolean.jacuzzi_planificador_observar
+grid_extra: sensor.jacuzzi_extra_red
+```
+
+| Clave | Para qué |
+|---|---|
+| `usage` | Selector No · Hoy · Siempre |
+| `desired` / `maintenance` | Lo que edita el dial con el planificador encendido (Hoy/Siempre → deseada; No → mantenimiento) |
+| `plan` | Línea con el motivo del plan (JSON `{a,t,r,n,m,h,l,v}`) |
+| `planner` | Encendido: activa el modo planificador de la tarjeta |
+| `observe` | Encendido: la línea del plan sale atenuada con "Observando:" |
+| `grid_extra` | Chip `+W` en la cabecera mientras se importa de la red para el jacuzzi |
+
+Con el planificador apagado, la tarjeta es exactamente la de la 0.1.1.
 
 ## Estados de disponibilidad
 

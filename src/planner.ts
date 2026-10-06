@@ -67,6 +67,8 @@ export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | nul
 }
 
 export function usageView(states: States, cfg: LayZSpaCardConfig): { current: string; options: string[] } | null {
+  // Con el planificador apagado la tarjeta es exactamente la 0.1.1: sin selector
+  if (!plannerActive(states, cfg)) return null;
   const e = cfg.usage ? states[cfg.usage] : undefined;
   if (!isValid(e)) return null;
   const options = Array.isArray(e.attributes.options) ? (e.attributes.options as unknown[]).map(String) : [];
