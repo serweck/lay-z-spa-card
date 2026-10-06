@@ -4,6 +4,11 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.7] - 2026-10-06
+
+### Corregido
+- El botón «Calentar igualmente» va en naranja de calor; con el jacuzzi apagado salía gris y parecía desactivado.
+
 ## [0.2.6] - 2026-10-06
 
 ### Añadido

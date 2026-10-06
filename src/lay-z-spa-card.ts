@@ -852,8 +852,9 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       font-size: 0.85rem;
     }
     .answer button.heat {
-      border-color: var(--accent);
-      color: var(--accent);
+      /* Naranja de calor fijo: el --accent es gris con el jacuzzi apagado y parecería desactivado */
+      border-color: var(--state-climate-heat-color, #ff8100);
+      color: var(--state-climate-heat-color, #ff8100);
     }
     .answer ha-icon {
       --mdc-icon-size: 16px;
