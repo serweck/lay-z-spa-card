@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -13,6 +13,7 @@ const cfg: LayZSpaCardConfig = {
   planner: "input_boolean.plan",
   observe: "input_boolean.obs",
   grid_extra: "sensor.extra",
+  ready_time: "input_datetime.hora",
 };
 const s = (state: string, attributes: Record<string, unknown> = {}) => ({ state, attributes });
 const num = (v: string) => s(v, { min: 20, max: 40, step: 1 });
@@ -26,6 +27,7 @@ function base(over: States = {}): States {
     "input_boolean.obs": s("off"),
     "sensor.plan": s('{"a":"calentar","t":37,"r":true,"n":4,"m":"Precalentando en valle hasta 34 °C","h":2.3,"l":"05:12","v":true}'),
     "sensor.extra": s("1950"),
+    "input_datetime.hora": s("20:00:00", { has_date: false, has_time: true }),
     ...over,
   };
 }
@@ -105,6 +107,19 @@ describe("maintenanceView", () => {
   it("con uso No no (ya lo edita el dial) ni con el planificador apagado", () => {
     expect(maintenanceView(base({ "input_select.uso": s("No", { options: ["No"] }) }), cfg)).toBeNull();
     expect(maintenanceView(base({ "input_boolean.plan": s("off") }), cfg)).toBeNull();
+  });
+});
+
+describe("readyTimeView", () => {
+  it("con uso Hoy/Siempre muestra la hora de listo sin segundos", () => {
+    expect(readyTimeView(base(), cfg)).toEqual({ entity: "input_datetime.hora", value: "20:00" });
+    expect(readyTimeView(base({ "input_datetime.hora": s("14:30:00") }), cfg)?.value).toBe("14:30");
+  });
+  it("nada con uso No, planificador apagado, sin configurar o sin dato", () => {
+    expect(readyTimeView(base({ "input_select.uso": s("No", { options: ["No"] }) }), cfg)).toBeNull();
+    expect(readyTimeView(base({ "input_boolean.plan": s("off") }), cfg)).toBeNull();
+    expect(readyTimeView(base(), { ...cfg, ready_time: undefined })).toBeNull();
+    expect(readyTimeView(base({ "input_datetime.hora": s("unavailable") }), cfg)).toBeNull();
   });
 });
 

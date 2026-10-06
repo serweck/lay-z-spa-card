@@ -69,14 +69,11 @@ export function errorCode(states: States, cfg: LayZSpaCardConfig): string | null
   return `E${String(Math.trunc(n)).padStart(2, "0")}`;
 }
 
-export function formatHours(h: number): string {
-  const total = Math.round(h * 60);
-  if (total < 1) return "<1 min";
-  const hh = Math.floor(total / 60);
-  const mm = total % 60;
-  if (hh === 0) return `${mm} min`;
-  if (mm === 0) return `${hh} h`;
-  return `${hh} h ${mm} min`;
+/** Hora a la que estará listo: "a las 21:50" o "mañana a las 05:50". */
+export function formatReadyAt(h: number, now: Date): string {
+  const at = new Date(now.getTime() + Math.round(h * 60) * 60000);
+  const hhmm = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+  return at.toDateString() === now.toDateString() ? `a las ${hhmm}` : `mañana a las ${hhmm}`;
 }
 
 export function formatPower(w: number): string {
@@ -85,7 +82,7 @@ export function formatPower(w: number): string {
 
 export type ReadyView = { kind: "ready" } | { kind: "eta"; text: string } | { kind: "none" };
 
-export function readyView(states: States, cfg: LayZSpaCardConfig): ReadyView {
+export function readyView(states: States, cfg: LayZSpaCardConfig, now: Date = new Date()): ReadyView {
   const climate = states[cfg.climate];
   if (!climate || climate.state !== "heat") return { kind: "none" };
   const ready = get(states, cfg.ready);
@@ -98,7 +95,7 @@ export function readyView(states: States, cfg: LayZSpaCardConfig): ReadyView {
   }
   const h = numberOf(get(states, cfg.time_to_ready));
   if (h === null || h <= 0 || h > MAX_TIME_TO_READY_H) return { kind: "none" };
-  return { kind: "eta", text: formatHours(h) };
+  return { kind: "eta", text: formatReadyAt(h, now) };
 }
 
 export function dialRange(attrs: Record<string, unknown>): { min: number; max: number; step: number } {

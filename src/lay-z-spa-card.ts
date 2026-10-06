@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, targetCall, targetSource, usageView } from "./planner";
+import { gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -248,7 +248,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
           ? html`<span class="chip ready"><ha-icon icon="mdi:check-circle"></ha-icon>Listo</span>`
           : ready.kind === "eta"
           ? html`<span class="item clickable" @click=${() => this._openMoreInfo(this.config.time_to_ready)}>
-              <ha-icon icon="mdi:timer-sand"></ha-icon>Listo en ${ready.text}
+              <ha-icon icon="mdi:timer-sand"></ha-icon>Listo ${ready.text}
             </span>`
           : nothing}
       </div>
@@ -328,7 +328,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const plan = planView(states, this.config);
     const usage = usageView(states, this.config);
     const maint = maintenanceView(states, this.config);
-    if (!plan && !usage && !maint) return nothing;
+    const readyAt = readyTimeView(states, this.config);
+    if (!plan && !usage && !maint && !readyAt) return nothing;
     return html`
       ${plan
         ? html`<div class="plan ${plan.observing ? "observing" : ""} clickable" title="Plan del jacuzzi" @click=${() => this._openMoreInfo(this.config.plan)}>
@@ -351,6 +352,12 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
             <button class="round sm" @click=${() => this._stepMaintenance(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
           </div>`
         : nothing}
+      ${readyAt
+        ? html`<div class="maint">
+            <span>Baño a las</span>
+            <input class="ready-time" type="time" step="900" .value=${readyAt.value} @change=${this._setReadyTime} />
+          </div>`
+        : nothing}
     `;
   }
 
@@ -363,6 +370,12 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     if (!this.config.usage) return;
     this.hass.callService("input_select", "select_option", { entity_id: this.config.usage, option });
   }
+
+  private _setReadyTime = (e: Event): void => {
+    const v = (e.target as HTMLInputElement).value;
+    if (!this.config.ready_time || !/^\d{2}:\d{2}$/.test(v)) return;
+    this.hass.callService("input_datetime", "set_datetime", { entity_id: this.config.ready_time, time: `${v}:00` });
+  };
 
   private _stepMaintenance(dir: number): void {
     const m = maintenanceView(this._states, this.config);
@@ -807,6 +820,15 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       text-align: center;
       color: var(--primary-text-color);
       font-variant-numeric: tabular-nums;
+    }
+    input.ready-time {
+      font: inherit;
+      color: var(--primary-text-color);
+      background: transparent;
+      border: 1px solid var(--divider-color, #ccc);
+      border-radius: 8px;
+      padding: 2px 6px;
+      color-scheme: light dark;
     }
     button.round.sm {
       width: 28px;

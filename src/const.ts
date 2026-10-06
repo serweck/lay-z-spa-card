@@ -1,6 +1,6 @@
 import type { EntityKey } from "./types";
 
-export const CARD_VERSION = "0.2.1";
+export const CARD_VERSION = "0.2.2";
 export const CARD_TAG = "lay-z-spa-card";
 export const EDITOR_TAG = "lay-z-spa-card-editor";
 
@@ -28,4 +28,5 @@ export const DEFAULT_ENTITIES: Record<EntityKey, string> = {
   planner: "input_boolean.jacuzzi_planificador",
   observe: "input_boolean.jacuzzi_planificador_observar",
   grid_extra: "sensor.jacuzzi_extra_red",
+  ready_time: "input_datetime.jacuzzi_hora_listo",
 };

@@ -83,6 +83,14 @@ export function maintenanceView(states: States, cfg: LayZSpaCardConfig) {
   return { entity, value: numberOf(e), min, max, step };
 }
 
+/** Hora de listo de hoy (input_datetime de solo hora), editable con el planificador y uso Hoy/Siempre. */
+export function readyTimeView(states: States, cfg: LayZSpaCardConfig): { entity: string; value: string } | null {
+  if (!cfg.ready_time || !plannerActive(states, cfg) || !usesNight(states, cfg)) return null;
+  const e = states[cfg.ready_time];
+  if (!isValid(e) || !/^\d{2}:\d{2}/.test(e.state)) return null;
+  return { entity: cfg.ready_time, value: e.state.slice(0, 5) };
+}
+
 export function gridExtraW(states: States, cfg: LayZSpaCardConfig): number | null {
   const w = numberOf(cfg.grid_extra ? states[cfg.grid_extra] : undefined);
   return w !== null && w > 0 ? w : null;

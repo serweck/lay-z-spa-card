@@ -63,7 +63,7 @@
       usage: "input_select.jacuzzi_uso", desired: "input_number.jacuzzi_temp_deseada",
       maintenance: "input_number.jacuzzi_temp_mantenimiento", plan: "sensor.jacuzzi_plan",
       planner: "input_boolean.jacuzzi_planificador", observe: "input_boolean.jacuzzi_planificador_observar",
-      grid_extra: "sensor.jacuzzi_extra_red",
+      grid_extra: "sensor.jacuzzi_extra_red", ready_time: "input_datetime.jacuzzi_hora_listo",
     };
     const st = (state, attributes = {}) => ({ state, attributes });
     function base({ mode = "fan_only", target = 37, current = 27, heater = "off", ready = "off",
@@ -84,6 +84,7 @@
         [CONFIG.planner]: st(planner), [CONFIG.observe]: st(observe),
         [CONFIG.plan]: st(plan ?? '{"a":"no_calentar","t":30,"r":false,"n":8,"m":"Esperando sol o la hora del remate","h":0,"l":"","v":false}'),
         [CONFIG.grid_extra]: st(extra),
+        [CONFIG.ready_time]: st("20:00:00", { has_date: false, has_time: true }),
       };
     }
     const SCENARIOS = {
@@ -120,6 +121,8 @@
             s[id] = { ...s[id], state: String(data.value) };
           if (domain === "input_select" && service === "select_option")
             s[id] = { ...s[id], state: data.option };
+          if (domain === "input_datetime" && service === "set_datetime")
+            s[id] = { ...s[id], state: data.time };
           if (domain === "input_boolean" && service === "toggle")
             s[id] = { ...s[id], state: s[id].state === "on" ? "off" : "on" };
           if (domain === "switch" && service === "toggle")

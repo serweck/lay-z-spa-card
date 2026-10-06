@@ -4,7 +4,6 @@ import {
   availability,
   AVAILABILITY_TEXT,
   errorCode,
-  formatHours,
   formatPower,
   readyView,
   dialRange,
@@ -126,22 +125,6 @@ describe("errorCode", () => {
   });
 });
 
-describe("formatHours", () => {
-  it("horas y minutos", () => {
-    expect(formatHours(9.8333)).toBe("9 h 50 min");
-  });
-  it("solo minutos", () => {
-    expect(formatHours(0.75)).toBe("45 min");
-  });
-  it("horas exactas, tambien redondeando", () => {
-    expect(formatHours(2)).toBe("2 h");
-    expect(formatHours(1.999)).toBe("2 h");
-  });
-  it("menos de un minuto", () => {
-    expect(formatHours(0.004)).toBe("<1 min");
-  });
-});
-
 describe("formatPower", () => {
   it("sin decimales y con punto de miles", () => {
     expect(formatPower(1942)).toBe("1.942");
@@ -152,8 +135,12 @@ describe("formatPower", () => {
 });
 
 describe("readyView", () => {
-  it("eta en calor sin llegar", () => {
-    expect(readyView(base(), cfg)).toEqual({ kind: "eta", text: "9 h 50 min" });
+  const NOW = new Date(2026, 9, 6, 12, 0);
+  it("eta en calor sin llegar: la hora a la que estará listo", () => {
+    expect(readyView(base(), cfg, NOW)).toEqual({ kind: "eta", text: "a las 21:50" });
+  });
+  it("si pasa de medianoche dice mañana", () => {
+    expect(readyView(base(), cfg, new Date(2026, 9, 6, 20, 0))).toEqual({ kind: "eta", text: "mañana a las 05:50" });
   });
   it("listo cuando ready esta on", () => {
     expect(readyView(base({ "binary_sensor.ready": s("on") }), cfg)).toEqual({ kind: "ready" });
@@ -176,7 +163,7 @@ describe("readyView", () => {
   it("sin entidad ready y current_temperature nulo no es 'listo'", () => {
     const noReady: LayZSpaCardConfig = { ...cfg, ready: undefined };
     const st = base({ "climate.spa": s("heat", { temperature: 37, current_temperature: null }) });
-    expect(readyView(st, noReady)).toEqual({ kind: "eta", text: "9 h 50 min" });
+    expect(readyView(st, noReady, NOW)).toEqual({ kind: "eta", text: "a las 21:50" });
   });
 });
 
