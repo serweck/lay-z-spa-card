@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, settingsSummary } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, settingsSummary, answerView, answerCall } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -14,6 +14,7 @@ const cfg: LayZSpaCardConfig = {
   observe: "input_boolean.obs",
   grid_extra: "sensor.extra",
   ready_time: "input_datetime.hora",
+  answer_script: "script.respuesta",
 };
 const s = (state: string, attributes: Record<string, unknown> = {}) => ({ state, attributes });
 const num = (v: string) => s(v, { min: 20, max: 40, step: 1 });
@@ -72,7 +73,7 @@ describe("targetCall", () => {
 
 describe("planView", () => {
   it("lee el JSON del plan", () => {
-    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, grid: true, observing: false, rule: 4 });
+    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, grid: true, observing: false, rule: 4, ask: false });
   });
   it("marca el modo observar", () => {
     expect(planView(base({ "input_boolean.obs": s("on") }), cfg)?.observing).toBe(true);
@@ -171,5 +172,37 @@ describe("plannerToggle (botón de la cabecera)", () => {
   it("sin la clave o sin dato: no hay botón", () => {
     expect(plannerToggle(base(), { type: "x", climate: "climate.spa" })).toBeNull();
     expect(plannerToggle(base({ "input_boolean.plan": s("unavailable") }), cfg)).toBeNull();
+  });
+});
+
+describe("answerView (botones de «no llega»)", () => {
+  const noLlega = '{"a":"no_calentar","t":30,"r":false,"n":10,"m":"No llega a las 22:00: ¿calentar igualmente?","h":3.8,"l":"","v":false,"i":true}';
+  const conScript = (over: States = {}) => base({ "sensor.plan": s(noLlega), "script.respuesta": s("off"), ...over });
+  it("con el plan en «no llega» y el script disponible: botones", () => {
+    expect(answerView(conScript(), cfg)).toEqual({ script: "script.respuesta" });
+  });
+  it("sin «no llega» no hay botones", () => {
+    expect(answerView(base({ "script.respuesta": s("off") }), cfg)).toBeNull();
+  });
+  it("en modo observar, sin el script o sin la clave: no hay botones", () => {
+    expect(answerView(conScript({ "input_boolean.obs": s("on") }), cfg)).toBeNull();
+    expect(answerView(base({ "sensor.plan": s(noLlega) }), cfg)).toBeNull();
+    expect(answerView(conScript(), { ...cfg, answer_script: undefined })).toBeNull();
+  });
+  it("con el planificador apagado no hay botones", () => {
+    expect(answerView(conScript({ "input_boolean.plan": s("off") }), cfg)).toBeNull();
+  });
+});
+
+describe("answerCall", () => {
+  it("lanza el script con la respuesta y quién responde", () => {
+    expect(answerCall("script.respuesta", "jacuzzi_calentar", "Alexis")).toEqual({
+      domain: "script",
+      service: "turn_on",
+      data: { entity_id: "script.respuesta", variables: { respuesta: "jacuzzi_calentar", quien: "Alexis" } },
+    });
+  });
+  it("sin nombre de usuario: Alguien", () => {
+    expect(answerCall("script.respuesta", "jacuzzi_mantener", undefined).data.variables.quien).toBe("Alguien");
   });
 });

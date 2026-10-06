@@ -25,6 +25,7 @@ const SCHEMA = [
   { name: "observe", selector: { entity: { domain: "input_boolean" } } },
   { name: "grid_extra", selector: { entity: { domain: "sensor" } } },
   { name: "ready_time", selector: { entity: { domain: "input_datetime" } } },
+  { name: "answer_script", selector: { entity: { domain: "script" } } },
 ];
 
 const LABELS: Record<string, string> = {
@@ -48,6 +49,7 @@ const LABELS: Record<string, string> = {
   observe: "Planificador: modo observar (input_boolean)",
   grid_extra: "Importación extra de red en W (sensor)",
   ready_time: "Planificador: hora de listo de hoy (input_datetime)",
+  answer_script: "Planificador: respuesta al aviso de «no llega» (script)",
 };
 
 @customElement(EDITOR_TAG)

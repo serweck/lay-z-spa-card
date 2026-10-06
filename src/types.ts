@@ -40,6 +40,8 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   /** sensor: W que Node-RED importa de la red para el jacuzzi. */
   grid_extra?: string;
   ready_time?: string;
+  /** script que recibe la respuesta al aviso de «no llega» (respuesta, quien). */
+  answer_script?: string;
 }
 
 export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name">;

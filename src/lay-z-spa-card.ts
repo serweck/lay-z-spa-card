@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, targetCall, targetSource, usageView } from "./planner";
+import { answerCall, answerView, type Answer, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -330,12 +330,23 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const usage = usageView(states, this.config);
     const maint = maintenanceView(states, this.config);
     const readyAt = readyTimeView(states, this.config);
+    const answer = answerView(states, this.config);
     if (!plan && !usage && !maint && !readyAt) return nothing;
     return html`
       ${plan
         ? html`<div class="plan ${plan.observing ? "observing" : ""} clickable" title="Plan del jacuzzi" @click=${() => this._openMoreInfo(this.config.plan)}>
             <ha-icon icon=${plan.observing ? "mdi:eye" : "mdi:robot"}></ha-icon>
             <span>${plan.observing ? "Observando: " : ""}${plan.text}${plan.grid ? " · red" : ""}</span>
+          </div>`
+        : nothing}
+      ${answer
+        ? html`<div class="answer">
+            <button class="heat" @click=${() => this._answer(answer.script, "jacuzzi_calentar")}>
+              <ha-icon icon="mdi:fire"></ha-icon>Calentar igualmente
+            </button>
+            <button @click=${() => this._answer(answer.script, "jacuzzi_mantener")}>
+              <ha-icon icon="mdi:snowflake"></ha-icon>Mantener
+            </button>
           </div>`
         : nothing}
       ${usage
@@ -381,6 +392,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     if (!this.config.planner) return;
     this.hass.callService("input_boolean", "toggle", { entity_id: this.config.planner });
   };
+
+  private _answer(script: string, respuesta: Answer): void {
+    const c = answerCall(script, respuesta, this.hass.user?.name);
+    this.hass.callService(c.domain, c.service, c.data);
+  }
 
   private _setUsage(option: string): void {
     if (!this.config.usage) return;
@@ -803,6 +819,32 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     }
     .plan.observing ha-icon {
       color: var(--secondary-text-color);
+    }
+    .answer {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .answer button {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border: 1px solid var(--divider-color, #444);
+      background: var(--secondary-background-color, #2a2a2a);
+      color: var(--primary-text-color);
+      padding: 6px 4px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .answer button.heat {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .answer ha-icon {
+      --mdc-icon-size: 16px;
     }
     .usage {
       display: flex;

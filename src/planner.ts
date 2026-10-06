@@ -45,7 +45,7 @@ export function targetCall(src: TargetSource, value: number) {
     : { domain: "climate", service: "set_temperature", data: { entity_id: src.entity, temperature: value } };
 }
 
-export type PlanView = { text: string; heating: boolean; grid: boolean; observing: boolean; rule: number };
+export type PlanView = { text: string; heating: boolean; grid: boolean; observing: boolean; rule: number; ask: boolean };
 
 export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | null {
   if (!cfg.plan || !plannerActive(states, cfg)) return null;
@@ -63,7 +63,22 @@ export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | nul
     grid: p.r === true,
     observing: !!cfg.observe && states[cfg.observe]?.state === "on",
     rule: Number(p.n ?? -1),
+    ask: p.i === true,
   };
+}
+
+/** Botones «Calentar igualmente / Mantener» cuando el plan dice que no llega a la hora (i=true). */
+export function answerView(states: States, cfg: LayZSpaCardConfig): { script: string } | null {
+  const plan = planView(states, cfg);
+  if (!plan || plan.observing || !plan.ask || !cfg.answer_script || !isValid(states[cfg.answer_script])) return null;
+  return { script: cfg.answer_script };
+}
+
+export type Answer = "jacuzzi_calentar" | "jacuzzi_mantener";
+
+/** La misma respuesta que los botones de Telegram y del móvil: el script confirma a todos. */
+export function answerCall(script: string, respuesta: Answer, quien: string | undefined) {
+  return { domain: "script", service: "turn_on", data: { entity_id: script, variables: { respuesta, quien: quien || "Alguien" } } };
 }
 
 export function usageView(states: States, cfg: LayZSpaCardConfig): { current: string; options: string[] } | null {

@@ -4,6 +4,14 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.5] - 2026-10-06
+
+### Añadido
+- **Botones «Calentar igualmente» y «Mantener»** bajo la línea del plan cuando el planificador dice que no
+  llega a la hora (`i: true` en el plan). Llaman al script de la clave nueva `answer_script`
+  (`script.jacuzzi_respuesta_no_llega`) con la respuesta y el nombre del usuario, igual que los botones de
+  Telegram y del móvil. No se muestran en modo observar.
+
 ## [0.2.1] - 2026-10-06
 
 ### Añadido
