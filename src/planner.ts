@@ -45,7 +45,7 @@ export function targetCall(src: TargetSource, value: number) {
     : { domain: "climate", service: "set_temperature", data: { entity_id: src.entity, temperature: value } };
 }
 
-export type PlanView = { text: string; heating: boolean; grid: boolean; observing: boolean; rule: number; ask: boolean; kept: boolean };
+export type PlanView = { text: string; heating: boolean; grid: boolean; observing: boolean; rule: number; ask: boolean; kept: boolean; forced: boolean };
 
 export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | null {
   if (!cfg.plan || !plannerActive(states, cfg)) return null;
@@ -65,15 +65,20 @@ export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | nul
     rule: Number(p.n ?? -1),
     ask: p.i === true,
     kept: p.k === true,
+    forced: p.c === true,
   };
 }
 
 /** Botones «Calentar igualmente / Mantener» cuando el plan dice que no llega a la hora (i=true). */
-export function answerView(states: States, cfg: LayZSpaCardConfig): { script: string; kept: boolean } | null {
+/** ask: nadie ha respondido (dos botones); kept: respondieron «mantener» (solo «Calentar igualmente»);
+ *  forced: respondieron «calentar» (solo «Mantener», para volver atrás). */
+export type AnswerMode = "ask" | "kept" | "forced";
+
+export function answerView(states: States, cfg: LayZSpaCardConfig): { script: string; mode: AnswerMode } | null {
   const plan = planView(states, cfg);
-  if (!plan || plan.observing || !(plan.ask || plan.kept) || !cfg.answer_script || !isValid(states[cfg.answer_script])) return null;
-  // Con «mantener» ya respondido solo queda la opción de cambiar de idea y calentar
-  return { script: cfg.answer_script, kept: plan.kept && !plan.ask };
+  if (!plan || plan.observing || !cfg.answer_script || !isValid(states[cfg.answer_script])) return null;
+  const mode: AnswerMode | null = plan.ask ? "ask" : plan.kept ? "kept" : plan.forced ? "forced" : null;
+  return mode ? { script: cfg.answer_script, mode } : null;
 }
 
 export type Answer = "jacuzzi_calentar" | "jacuzzi_mantener";

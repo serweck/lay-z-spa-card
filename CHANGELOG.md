@@ -4,6 +4,12 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.8] - 2026-10-06
+
+### Añadido
+- Con «Calentar igualmente» ya respondido (`c: true` en el plan) queda solo el botón «Mantener», para volver
+  atrás. Así se puede cambiar de idea en los dos sentidos.
+
 ## [0.2.7] - 2026-10-06
 
 ### Corregido

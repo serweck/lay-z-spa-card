@@ -345,10 +345,12 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
         : nothing}
       ${answer
         ? html`<div class="answer">
-            <button class="heat" @click=${() => this._answer(answer.script, "jacuzzi_calentar")}>
-              <ha-icon icon="mdi:fire"></ha-icon>Calentar igualmente
-            </button>
-            ${answer.kept
+            ${answer.mode === "forced"
+              ? nothing
+              : html`<button class="heat" @click=${() => this._answer(answer.script, "jacuzzi_calentar")}>
+                  <ha-icon icon="mdi:fire"></ha-icon>Calentar igualmente
+                </button>`}
+            ${answer.mode === "kept"
               ? nothing
               : html`<button @click=${() => this._answer(answer.script, "jacuzzi_mantener")}>
                   <ha-icon icon="mdi:snowflake"></ha-icon>Mantener

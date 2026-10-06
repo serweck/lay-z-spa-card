@@ -76,7 +76,7 @@ describe("targetCall", () => {
 
 describe("planView", () => {
   it("lee el JSON del plan", () => {
-    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, grid: true, observing: false, rule: 4, ask: false, kept: false });
+    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, grid: true, observing: false, rule: 4, ask: false, kept: false, forced: false });
   });
   it("marca el modo observar", () => {
     expect(planView(base({ "input_boolean.obs": s("on") }), cfg)?.observing).toBe(true);
@@ -186,11 +186,15 @@ describe("answerView (botones de «no llega»)", () => {
   const noLlega = '{"a":"no_calentar","t":30,"r":false,"n":10,"m":"No llega a las 22:00: ¿calentar igualmente?","h":3.8,"l":"","v":false,"i":true}';
   const conScript = (over: States = {}) => base({ "sensor.plan": s(noLlega), "script.respuesta": s("off"), ...over });
   it("con el plan en «no llega» y el script disponible: botones", () => {
-    expect(answerView(conScript(), cfg)).toEqual({ script: "script.respuesta", kept: false });
+    expect(answerView(conScript(), cfg)).toEqual({ script: "script.respuesta", mode: "ask" });
   });
   it("con «mantener» respondido: solo el botón de calentar", () => {
     const kept = '{"a":"no_calentar","t":30,"r":false,"n":10,"m":"Mantenido a 30 °C por hoy (no llega a las 22:00)","h":3,"l":"","v":false,"i":false,"k":true}';
-    expect(answerView(conScript({ "sensor.plan": s(kept) }), cfg)).toEqual({ script: "script.respuesta", kept: true });
+    expect(answerView(conScript({ "sensor.plan": s(kept) }), cfg)).toEqual({ script: "script.respuesta", mode: "kept" });
+  });
+  it("calentando igualmente: solo el botón de mantener, para volver atrás", () => {
+    const forced = '{"a":"calentar","t":37,"r":false,"n":6,"m":"Calentando igualmente: listo a las 23:31","h":3,"l":"23:31","v":false,"i":false,"k":false,"c":true}';
+    expect(answerView(conScript({ "sensor.plan": s(forced) }), cfg)).toEqual({ script: "script.respuesta", mode: "forced" });
   });
   it("sin «no llega» no hay botones", () => {
     expect(answerView(base({ "script.respuesta": s("off") }), cfg)).toBeNull();
