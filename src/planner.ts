@@ -1,5 +1,5 @@
 import type { LayZSpaCardConfig } from "./types";
-import { dialRange, isValid, numberOf, toNumber, type ReadyView, type States } from "./status";
+import { dialRange, formatTemp, isValid, numberOf, toNumber, type ReadyView, type States } from "./status";
 
 export type TargetSource = {
   kind: "climate" | "helper";
@@ -89,6 +89,14 @@ export function readyTimeView(states: States, cfg: LayZSpaCardConfig): { entity:
   const e = states[cfg.ready_time];
   if (!isValid(e) || !/^\d{2}:\d{2}/.test(e.state)) return null;
   return { entity: cfg.ready_time, value: e.state.slice(0, 5) };
+}
+
+/** Texto del bloque de ajustes plegado: "Mant. 30 °C · Baño 20:00". */
+export function settingsSummary(maint: { value: number | null } | null, readyAt: { value: string } | null): string {
+  const parts: string[] = [];
+  if (maint) parts.push(`Mant. ${maint.value !== null ? formatTemp(maint.value) : "--"} °C`);
+  if (readyAt) parts.push(`Baño ${readyAt.value}`);
+  return parts.join(" · ");
 }
 
 export function gridExtraW(states: States, cfg: LayZSpaCardConfig): number | null {

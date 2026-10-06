@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, settingsSummary } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -120,6 +120,17 @@ describe("readyTimeView", () => {
     expect(readyTimeView(base({ "input_boolean.plan": s("off") }), cfg)).toBeNull();
     expect(readyTimeView(base(), { ...cfg, ready_time: undefined })).toBeNull();
     expect(readyTimeView(base({ "input_datetime.hora": s("unavailable") }), cfg)).toBeNull();
+  });
+});
+
+describe("settingsSummary", () => {
+  it("resume mantenimiento y hora del baño para el bloque plegado", () => {
+    expect(settingsSummary({ value: 30 }, { value: "20:00" })).toBe("Mant. 30 °C · Baño 20:00");
+  });
+  it("con solo uno, o sin dato", () => {
+    expect(settingsSummary({ value: 29.5 }, null)).toBe("Mant. 29,5 °C");
+    expect(settingsSummary(null, { value: "14:30" })).toBe("Baño 14:30");
+    expect(settingsSummary({ value: null }, null)).toBe("Mant. -- °C");
   });
 });
 

@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, targetCall, targetSource, usageView } from "./planner";
+import { gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -69,6 +69,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   @state() private _pending: PendingTarget | null = null;
   /** Entidad a la que pertenece el pendiente: al cambiar el uso, el de la deseada no vale para el mantenimiento. */
   @state() private _pendingEntity: string | null = null;
+  @state() private _settingsOpen = false;
 
   private _valueAngle = 0;
   private _dragPointerId: number | null = null;
@@ -345,8 +346,13 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
           </div>`
         : nothing}
       ${maint || readyAt
-        ? html`<div class="settings">
-            ${maint
+        ? html`<div class="settings ${this._settingsOpen ? "open" : ""}">
+            <button class="settings-toggle" aria-expanded=${this._settingsOpen ? "true" : "false"} @click=${this._toggleSettings}>
+              <ha-icon icon="mdi:tune-variant"></ha-icon>
+              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary(maint, readyAt)}</span>
+              <ha-icon class="chevron" icon="mdi:chevron-down"></ha-icon>
+            </button>
+            ${this._settingsOpen && maint
               ? html`<div class="setting">
                   <ha-icon icon="mdi:wrench-outline"></ha-icon>
                   <span class="setting-label">Mantenimiento</span>
@@ -357,7 +363,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
                   </div>
                 </div>`
               : nothing}
-            ${readyAt
+            ${this._settingsOpen && readyAt
               ? html`<div class="setting">
                   <ha-icon icon="mdi:clock-outline"></ha-icon>
                   <span class="setting-label">Baño a las</span>
@@ -380,6 +386,10 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     if (!this.config.usage) return;
     this.hass.callService("input_select", "select_option", { entity_id: this.config.usage, option });
   }
+
+  private _toggleSettings = (): void => {
+    this._settingsOpen = !this._settingsOpen;
+  };
 
   private _setReadyTime = (e: Event): void => {
     const v = (e.target as HTMLInputElement).value;
@@ -830,6 +840,31 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       font-size: 0.85rem;
       color: var(--secondary-text-color);
     }
+    .settings-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 36px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 0.85rem;
+      color: var(--secondary-text-color);
+      cursor: pointer;
+      text-align: left;
+    }
+    .settings-toggle > ha-icon {
+      --mdc-icon-size: 18px;
+    }
+    .settings-toggle .chevron {
+      transition: transform 0.2s ease;
+    }
+    .settings.open .settings-toggle .chevron {
+      transform: rotate(180deg);
+    }
+    .settings-toggle + .setting,
     .setting + .setting {
       border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.08));
     }
