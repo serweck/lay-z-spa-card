@@ -1,6 +1,6 @@
 {
   "name": "lay-z-spa-card",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Tarjeta Lovelace para gestionar un jacuzzi Lay-Z-Spa (firmware visualapproach) en Home Assistant",
   "type": "module",
   "main": "dist/lay-z-spa-card.js",

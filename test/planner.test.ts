@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, settingsSummary, answerView, answerCall } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -15,6 +15,9 @@ const cfg: LayZSpaCardConfig = {
   grid_extra: "sensor.extra",
   ready_time: "input_datetime.hora",
   answer_script: "script.respuesta",
+  ready_until: "input_datetime.fin",
+  ready_time_workday: "input_datetime.lab",
+  ready_time_holiday: "input_datetime.fest",
 };
 const s = (state: string, attributes: Record<string, unknown> = {}) => ({ state, attributes });
 const num = (v: string) => s(v, { min: 20, max: 40, step: 1 });
@@ -73,7 +76,7 @@ describe("targetCall", () => {
 
 describe("planView", () => {
   it("lee el JSON del plan", () => {
-    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, grid: true, observing: false, rule: 4, ask: false });
+    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, grid: true, observing: false, rule: 4, ask: false, kept: false });
   });
   it("marca el modo observar", () => {
     expect(planView(base({ "input_boolean.obs": s("on") }), cfg)?.observing).toBe(true);
@@ -128,6 +131,10 @@ describe("settingsSummary", () => {
   it("resume mantenimiento y hora del baño para el bloque plegado", () => {
     expect(settingsSummary({ value: 30 }, { value: "20:00" })).toBe("Mant. 30 °C · Baño 20:00");
   });
+  it("con hora de fin, el baño como franja (00:00 = sin fin)", () => {
+    expect(settingsSummary({ value: 30 }, { value: "20:00" }, { value: "23:30" })).toBe("Mant. 30 °C · Baño 20:00–23:30");
+    expect(settingsSummary({ value: 30 }, { value: "20:00" }, { value: "00:00" })).toBe("Mant. 30 °C · Baño 20:00");
+  });
   it("con solo uno, o sin dato", () => {
     expect(settingsSummary({ value: 29.5 }, null)).toBe("Mant. 29,5 °C");
     expect(settingsSummary(null, { value: "14:30" })).toBe("Baño 14:30");
@@ -179,7 +186,11 @@ describe("answerView (botones de «no llega»)", () => {
   const noLlega = '{"a":"no_calentar","t":30,"r":false,"n":10,"m":"No llega a las 22:00: ¿calentar igualmente?","h":3.8,"l":"","v":false,"i":true}';
   const conScript = (over: States = {}) => base({ "sensor.plan": s(noLlega), "script.respuesta": s("off"), ...over });
   it("con el plan en «no llega» y el script disponible: botones", () => {
-    expect(answerView(conScript(), cfg)).toEqual({ script: "script.respuesta" });
+    expect(answerView(conScript(), cfg)).toEqual({ script: "script.respuesta", kept: false });
+  });
+  it("con «mantener» respondido: solo el botón de calentar", () => {
+    const kept = '{"a":"no_calentar","t":30,"r":false,"n":10,"m":"Mantenido a 30 °C por hoy (no llega a las 22:00)","h":3,"l":"","v":false,"i":false,"k":true}';
+    expect(answerView(conScript({ "sensor.plan": s(kept) }), cfg)).toEqual({ script: "script.respuesta", kept: true });
   });
   it("sin «no llega» no hay botones", () => {
     expect(answerView(base({ "script.respuesta": s("off") }), cfg)).toBeNull();
@@ -204,5 +215,20 @@ describe("answerCall", () => {
   });
   it("sin nombre de usuario: Alguien", () => {
     expect(answerCall("script.respuesta", "jacuzzi_mantener", undefined).data.variables.quien).toBe("Alguien");
+  });
+});
+
+describe("timeSettingView (horas de los ajustes)", () => {
+  const con = (over: States = {}) =>
+    base({ "input_datetime.fin": s("23:30:00"), "input_datetime.lab": s("20:00:00"), "input_datetime.fest": s("12:00:00"), ...over });
+  it("lee cada hora sin segundos", () => {
+    expect(timeSettingView(con(), cfg, "ready_until")).toEqual({ entity: "input_datetime.fin", value: "23:30" });
+    expect(timeSettingView(con(), cfg, "ready_time_workday")?.value).toBe("20:00");
+    expect(timeSettingView(con(), cfg, "ready_time_holiday")?.value).toBe("12:00");
+  });
+  it("nada con el planificador apagado, sin configurar o sin dato", () => {
+    expect(timeSettingView(con({ "input_boolean.plan": s("off") }), cfg, "ready_until")).toBeNull();
+    expect(timeSettingView(con(), { ...cfg, ready_until: undefined }, "ready_until")).toBeNull();
+    expect(timeSettingView(con({ "input_datetime.fin": s("unknown") }), cfg, "ready_until")).toBeNull();
   });
 });

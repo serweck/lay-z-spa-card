@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { answerCall, answerView, type Answer, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, targetCall, targetSource, usageView } from "./planner";
+import { answerCall, answerView, type Answer, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, timeSettingView, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -331,7 +331,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const maint = maintenanceView(states, this.config);
     const readyAt = readyTimeView(states, this.config);
     const answer = answerView(states, this.config);
-    if (!plan && !usage && !maint && !readyAt) return nothing;
+    const until = timeSettingView(states, this.config, "ready_until");
+    const workday = timeSettingView(states, this.config, "ready_time_workday");
+    const holiday = timeSettingView(states, this.config, "ready_time_holiday");
+    const hasSettings = !!(maint || readyAt || until || workday || holiday);
+    if (!plan && !usage && !hasSettings) return nothing;
     return html`
       ${plan
         ? html`<div class="plan ${plan.observing ? "observing" : ""} clickable" title="Plan del jacuzzi" @click=${() => this._openMoreInfo(this.config.plan)}>
@@ -344,9 +348,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
             <button class="heat" @click=${() => this._answer(answer.script, "jacuzzi_calentar")}>
               <ha-icon icon="mdi:fire"></ha-icon>Calentar igualmente
             </button>
-            <button @click=${() => this._answer(answer.script, "jacuzzi_mantener")}>
-              <ha-icon icon="mdi:snowflake"></ha-icon>Mantener
-            </button>
+            ${answer.kept
+              ? nothing
+              : html`<button @click=${() => this._answer(answer.script, "jacuzzi_mantener")}>
+                  <ha-icon icon="mdi:snowflake"></ha-icon>Mantener
+                </button>`}
           </div>`
         : nothing}
       ${usage
@@ -356,11 +362,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
             )}
           </div>`
         : nothing}
-      ${maint || readyAt
+      ${hasSettings
         ? html`<div class="settings ${this._settingsOpen ? "open" : ""}">
             <button class="settings-toggle" aria-expanded=${this._settingsOpen ? "true" : "false"} @click=${this._toggleSettings}>
               <ha-icon icon="mdi:tune-variant"></ha-icon>
-              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary(maint, readyAt)}</span>
+              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary(maint, readyAt, until) || "Horas del baño"}</span>
               <ha-icon class="chevron" icon="mdi:chevron-down"></ha-icon>
             </button>
             ${this._settingsOpen && maint
@@ -374,15 +380,10 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
                   </div>
                 </div>`
               : nothing}
-            ${this._settingsOpen && readyAt
-              ? html`<div class="setting">
-                  <ha-icon icon="mdi:clock-outline"></ha-icon>
-                  <span class="setting-label">Baño a las</span>
-                  <div class="pill">
-                    <input class="ready-time" type="time" step="900" .value=${readyAt.value} @change=${this._setReadyTime} />
-                  </div>
-                </div>`
-              : nothing}
+            ${this._settingsOpen ? this._timeRow("mdi:clock-outline", "Baño hoy a las", readyAt) : nothing}
+            ${this._settingsOpen ? this._timeRow("mdi:clock-end", "Baño hasta", until) : nothing}
+            ${this._settingsOpen ? this._timeRow("mdi:briefcase-outline", "Laborables", workday) : nothing}
+            ${this._settingsOpen ? this._timeRow("mdi:party-popper", "Festivos y finde", holiday) : nothing}
           </div>`
         : nothing}
     `;
@@ -407,11 +408,22 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     this._settingsOpen = !this._settingsOpen;
   };
 
-  private _setReadyTime = (e: Event): void => {
+  private _timeRow(icon: string, label: string, view: { entity: string; value: string } | null): TemplateResult | typeof nothing {
+    if (!view) return nothing;
+    return html`<div class="setting">
+      <ha-icon icon=${icon}></ha-icon>
+      <span class="setting-label">${label}</span>
+      <div class="pill">
+        <input class="ready-time" type="time" step="900" .value=${view.value} @change=${(e: Event) => this._setTime(view.entity, e)} />
+      </div>
+    </div>`;
+  }
+
+  private _setTime(entity: string, e: Event): void {
     const v = (e.target as HTMLInputElement).value;
-    if (!this.config.ready_time || !/^\d{2}:\d{2}$/.test(v)) return;
-    this.hass.callService("input_datetime", "set_datetime", { entity_id: this.config.ready_time, time: `${v}:00` });
-  };
+    if (!/^\d{2}:\d{2}$/.test(v)) return;
+    this.hass.callService("input_datetime", "set_datetime", { entity_id: entity, time: `${v}:00` });
+  }
 
   private _stepMaintenance(dir: number): void {
     const m = maintenanceView(this._states, this.config);

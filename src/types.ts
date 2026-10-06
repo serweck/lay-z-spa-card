@@ -42,6 +42,12 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   ready_time?: string;
   /** script que recibe la respuesta al aviso de «no llega» (respuesta, quien). */
   answer_script?: string;
+  /** input_datetime (solo hora): hasta qué hora se mantiene la deseada; después, solo mantenimiento. */
+  ready_until?: string;
+  /** input_datetime (solo hora): hora de listo por defecto los laborables. */
+  ready_time_workday?: string;
+  /** input_datetime (solo hora): hora de listo por defecto fines de semana y festivos. */
+  ready_time_holiday?: string;
 }
 
 export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name">;

@@ -26,6 +26,9 @@ const SCHEMA = [
   { name: "grid_extra", selector: { entity: { domain: "sensor" } } },
   { name: "ready_time", selector: { entity: { domain: "input_datetime" } } },
   { name: "answer_script", selector: { entity: { domain: "script" } } },
+  { name: "ready_until", selector: { entity: { domain: "input_datetime" } } },
+  { name: "ready_time_workday", selector: { entity: { domain: "input_datetime" } } },
+  { name: "ready_time_holiday", selector: { entity: { domain: "input_datetime" } } },
 ];
 
 const LABELS: Record<string, string> = {
@@ -50,6 +53,9 @@ const LABELS: Record<string, string> = {
   grid_extra: "Importación extra de red en W (sensor)",
   ready_time: "Planificador: hora de listo de hoy (input_datetime)",
   answer_script: "Planificador: respuesta al aviso de «no llega» (script)",
+  ready_until: "Planificador: baño hasta (input_datetime)",
+  ready_time_workday: "Planificador: hora del baño por defecto, laborables (input_datetime)",
+  ready_time_holiday: "Planificador: hora del baño por defecto, fines de semana y festivos (input_datetime)",
 };
 
 @customElement(EDITOR_TAG)

@@ -4,6 +4,18 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.6] - 2026-10-06
+
+### Añadido
+- **Horas del baño en los ajustes**: «Baño hoy a las», «Baño hasta» (clave `ready_until`: después solo
+  mantenimiento hasta el día siguiente; 00:00 = hasta medianoche), «Laborables» (`ready_time_workday`) y
+  «Festivos y finde» (`ready_time_holiday`), las horas por defecto de cada tipo de día. Las tres nuevas se
+  pueden cambiar con cualquier uso. El resumen plegado muestra la franja: «Baño 20:00–23:30».
+
+### Cambiado
+- Con «Mantener» ya respondido (`k: true` en el plan) solo queda el botón «Calentar igualmente», por si
+  se cambia de idea.
+
 ## [0.2.5] - 2026-10-06
 
 ### Añadido
