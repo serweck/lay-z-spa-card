@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { gridExtraW, maintenanceView, planView, readyForTarget, targetCall, targetSource, usageView } from "./planner";
+import { gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -135,12 +135,24 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
 
     const label = !meta ? mode : mode === "heat" && heaterOn ? "Calentando" : meta.label;
     const power = numberOf(this.config.power ? states[this.config.power] : undefined);
-    const gridExtra = gridExtraW(states, this.config);
+    const toggle = plannerToggle(states, this.config);
 
     return html`
       <ha-card style="--accent:${accent}">
         <div class="header">
           <span class="title"><ha-icon icon="mdi:hot-tub"></ha-icon>${this.config.name ?? "Jacuzzi"}</span>
+          <span class="header-center">
+            ${toggle
+              ? html`<button
+                  class="planner-toggle ${toggle.on ? "on" : ""}"
+                  title=${toggle.on ? "Planificador encendido: tócalo para apagarlo" : "Planificador apagado: tócalo para encenderlo"}
+                  @click=${this._togglePlanner}
+                >
+                  <ha-icon icon=${toggle.on ? "mdi:robot" : "mdi:robot-off"}></ha-icon>Planificador
+                </button>`
+              : nothing}
+          </span>
+          <span class="header-right">
           ${power !== null
             ? html`<button
                 class="power"
@@ -150,15 +162,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
                 <ha-icon icon="mdi:flash"></ha-icon>${formatPower(power)} W
               </button>`
             : nothing}
-          ${gridExtra !== null
-            ? html`<button
-                class="power grid-extra"
-                title="Importando de la red para el jacuzzi (sin batería)"
-                @click=${() => this._openMoreInfo(this.config.grid_extra)}
-              >
-                <ha-icon icon="mdi:transmission-tower-import"></ha-icon>+${formatPower(gridExtra)} W
-              </button>`
-            : nothing}
+          </span>
         </div>
 
         <div class="dial-wrap">
@@ -227,11 +231,17 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const water = climate ? toNumber(climate.attributes.current_temperature) : null;
     const ready = readyForTarget(readyView(states, this.config), targetSource(states, this.config), water);
     const err = errorCode(states, this.config);
+    const gridExtra = gridExtraW(states, this.config);
     return html`
       <div class="info">
         ${ambient !== null
           ? html`<span class="item clickable" @click=${() => this._openMoreInfo(this.config.ambient)}>
               <ha-icon icon="mdi:home-thermometer-outline"></ha-icon>Amb. ${formatTemp(ambient)} °C
+            </span>`
+          : nothing}
+        ${gridExtra !== null
+          ? html`<span class="item grid-extra clickable" title="Importando de la red para el jacuzzi (sin batería)" @click=${() => this._openMoreInfo(this.config.grid_extra)}>
+              <ha-icon icon="mdi:transmission-tower-import"></ha-icon>+${formatPower(gridExtra)} W red
             </span>`
           : nothing}
         ${ready.kind === "ready"
@@ -343,6 +353,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
         : nothing}
     `;
   }
+
+  private _togglePlanner = (): void => {
+    if (!this.config.planner) return;
+    this.hass.callService("input_boolean", "toggle", { entity_id: this.config.planner });
+  };
 
   private _setUsage(option: string): void {
     if (!this.config.usage) return;
@@ -681,14 +696,53 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     }
 
     /* PLANIFICADOR (v0.2.0) */
+    /* Cabecera en tres columnas: nombre | botón del planificador centrado | potencia (v0.2.1) */
     .header {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       gap: 6px;
     }
     .title {
-      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    button.grid-extra {
+    .header-center {
+      display: flex;
+      justify-content: center;
+    }
+    .header-right {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 4px;
+    }
+    button.planner-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--divider-color, #46494d);
+      border-radius: 14px;
+      background: transparent;
+      color: var(--secondary-text-color);
+      padding: 2px 10px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    button.planner-toggle ha-icon {
+      --mdc-icon-size: 16px;
+    }
+    button.planner-toggle.on {
+      border-color: transparent;
+      background: var(--primary-color, #03a9f4);
+      color: #fff;
+    }
+    .grid-extra {
       color: #26a69a;
+    }
+    button.power {
+      white-space: nowrap;
     }
     .caption {
       font-size: 0.78rem;

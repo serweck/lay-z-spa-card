@@ -33,7 +33,7 @@ el servidor.
 **Opción B — Manual:**
 
 1. Copia `dist/lay-z-spa-card.js` a `config/www/`.
-2. Añádelo como recurso (Ajustes → Paneles → ⋮ → Recursos): URL `/local/lay-z-spa-card.js?v=0.2.0`,
+2. Añádelo como recurso (Ajustes → Paneles → ⋮ → Recursos): URL `/local/lay-z-spa-card.js?v=0.2.1`,
    tipo **Módulo JavaScript**.
 3. Recarga el navegador (Ctrl+F5).
 

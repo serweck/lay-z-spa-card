@@ -120,6 +120,8 @@
             s[id] = { ...s[id], state: String(data.value) };
           if (domain === "input_select" && service === "select_option")
             s[id] = { ...s[id], state: data.option };
+          if (domain === "input_boolean" && service === "toggle")
+            s[id] = { ...s[id], state: s[id].state === "on" ? "off" : "on" };
           if (domain === "switch" && service === "toggle")
             s[id] = { ...s[id], state: s[id].state === "on" ? "off" : "on" };
           hass.states = s;

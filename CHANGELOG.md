@@ -4,6 +4,16 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.1] - 2026-10-06
+
+### Añadido
+- **Botón del planificador** centrado en la cabecera (entre el nombre y la potencia): enciende o apaga
+  `planner` con un toque. Se muestra también apagado, para poder volver a encenderlo.
+
+### Cambiado
+- La cabecera pasa a tres columnas y el chip `+W red` baja a la fila de información, para que no se
+  corte el nombre ni la potencia.
+
 ## [0.2.0] - 2026-10-06
 
 ### Añadido

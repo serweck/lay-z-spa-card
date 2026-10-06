@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -132,5 +132,18 @@ describe("readyForTarget (revisión: 'Listo' con el planificador)", () => {
     const climate = { ...helper, kind: "climate" as const, caption: null };
     expect(readyForTarget({ kind: "ready" }, climate, 34)).toEqual({ kind: "ready" });
     expect(readyForTarget({ kind: "eta", text: "2 h" }, helper, 30)).toEqual({ kind: "eta", text: "2 h" });
+  });
+});
+
+describe("plannerToggle (botón de la cabecera)", () => {
+  it("encendido", () => {
+    expect(plannerToggle(base(), cfg)).toEqual({ entity: "input_boolean.plan", on: true });
+  });
+  it("apagado también se muestra, para poder volver a encenderlo", () => {
+    expect(plannerToggle(base({ "input_boolean.plan": s("off") }), cfg)).toEqual({ entity: "input_boolean.plan", on: false });
+  });
+  it("sin la clave o sin dato: no hay botón", () => {
+    expect(plannerToggle(base(), { type: "x", climate: "climate.spa" })).toBeNull();
+    expect(plannerToggle(base({ "input_boolean.plan": s("unavailable") }), cfg)).toBeNull();
   });
 });

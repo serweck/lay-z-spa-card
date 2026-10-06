@@ -95,3 +95,10 @@ export function readyForTarget(ready: ReadyView, src: TargetSource, current: num
   if (current === null || src.value === null || current < src.value) return { kind: "none" };
   return ready;
 }
+
+/** Botón del planificador en la cabecera: se muestra también apagado, para poder volver a encenderlo. */
+export function plannerToggle(states: States, cfg: LayZSpaCardConfig): { entity: string; on: boolean } | null {
+  const e = cfg.planner ? states[cfg.planner] : undefined;
+  if (!cfg.planner || !isValid(e)) return null;
+  return { entity: cfg.planner, on: e.state === "on" };
+}
