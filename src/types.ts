@@ -25,6 +25,20 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   power?: string;
   /** sensor: energia consumida hoy (kWh). */
   energy_today?: string;
+  /** input_select del uso (No/Hoy/Siempre). */
+  usage?: string;
+  /** input_number de la temperatura deseada (uso Hoy/Siempre). */
+  desired?: string;
+  /** input_number de la temperatura de mantenimiento (uso No). */
+  maintenance?: string;
+  /** sensor con el plan en JSON {a,t,r,n,m,h,l,v}. */
+  plan?: string;
+  /** input_boolean del planificador. */
+  planner?: string;
+  /** input_boolean del modo observar. */
+  observe?: string;
+  /** sensor: W que Node-RED importa de la red para el jacuzzi. */
+  grid_extra?: string;
 }
 
 export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name">;

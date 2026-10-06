@@ -1,0 +1,87 @@
+import type { LayZSpaCardConfig } from "./types";
+import { dialRange, isValid, numberOf, toNumber, type States } from "./status";
+
+export type TargetSource = {
+  kind: "climate" | "helper";
+  entity: string;
+  value: number | null;
+  min: number;
+  max: number;
+  step: number;
+  caption: string | null;
+};
+
+const NIGHT_USES = ["Hoy", "Siempre"];
+
+export function plannerActive(states: States, cfg: LayZSpaCardConfig): boolean {
+  if (!cfg.planner || !cfg.usage || !cfg.desired || !cfg.maintenance) return false;
+  return states[cfg.planner]?.state === "on";
+}
+
+function usesNight(states: States, cfg: LayZSpaCardConfig): boolean {
+  return !!cfg.usage && NIGHT_USES.includes(states[cfg.usage]?.state ?? "");
+}
+
+function helperRange(attrs: Record<string, unknown>) {
+  return dialRange({ min_temp: attrs.min, max_temp: attrs.max, target_temp_step: attrs.step });
+}
+
+export function targetSource(states: States, cfg: LayZSpaCardConfig): TargetSource {
+  if (plannerActive(states, cfg)) {
+    const night = usesNight(states, cfg);
+    const entity = (night ? cfg.desired : cfg.maintenance) as string;
+    const e = states[entity];
+    const { min, max, step } = helperRange(e?.attributes ?? {});
+    return { kind: "helper", entity, value: numberOf(e), min, max, step, caption: night ? "deseada" : "mantenimiento" };
+  }
+  const climate = states[cfg.climate];
+  const { min, max, step } = dialRange(climate?.attributes ?? {});
+  return { kind: "climate", entity: cfg.climate, value: toNumber(climate?.attributes.temperature), min, max, step, caption: null };
+}
+
+export function targetCall(src: TargetSource, value: number) {
+  return src.kind === "helper"
+    ? { domain: "input_number", service: "set_value", data: { entity_id: src.entity, value } }
+    : { domain: "climate", service: "set_temperature", data: { entity_id: src.entity, temperature: value } };
+}
+
+export type PlanView = { text: string; heating: boolean; grid: boolean; observing: boolean; rule: number };
+
+export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | null {
+  if (!cfg.plan || !plannerActive(states, cfg)) return null;
+  const raw = states[cfg.plan]?.state ?? "";
+  if (!raw.startsWith("{")) return null;
+  let p: Record<string, unknown>;
+  try {
+    p = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  return {
+    text: String(p.m ?? ""),
+    heating: p.a === "calentar",
+    grid: p.r === true,
+    observing: !!cfg.observe && states[cfg.observe]?.state === "on",
+    rule: Number(p.n ?? -1),
+  };
+}
+
+export function usageView(states: States, cfg: LayZSpaCardConfig): { current: string; options: string[] } | null {
+  const e = cfg.usage ? states[cfg.usage] : undefined;
+  if (!isValid(e)) return null;
+  const options = Array.isArray(e.attributes.options) ? (e.attributes.options as unknown[]).map(String) : [];
+  return { current: e.state, options };
+}
+
+export function maintenanceView(states: States, cfg: LayZSpaCardConfig) {
+  if (!plannerActive(states, cfg) || !usesNight(states, cfg)) return null;
+  const entity = cfg.maintenance as string;
+  const e = states[entity];
+  const { min, max, step } = helperRange(e?.attributes ?? {});
+  return { entity, value: numberOf(e), min, max, step };
+}
+
+export function gridExtraW(states: States, cfg: LayZSpaCardConfig): number | null {
+  const w = numberOf(cfg.grid_extra ? states[cfg.grid_extra] : undefined);
+  return w !== null && w > 0 ? w : null;
+}
