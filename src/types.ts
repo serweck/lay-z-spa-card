@@ -48,6 +48,8 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   ready_time_workday?: string;
   /** input_datetime (solo hora): hora de listo por defecto fines de semana y festivos. */
   ready_time_holiday?: string;
+  /** input_boolean: «Hoy no lo uso» (el día cuenta como uso No; se apaga a medianoche). */
+  skip_today?: string;
 }
 
 export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name">;

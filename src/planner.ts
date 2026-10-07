@@ -18,8 +18,17 @@ export function plannerActive(states: States, cfg: LayZSpaCardConfig): boolean {
   return states[cfg.planner]?.state === "on";
 }
 
-function usesNight(states: States, cfg: LayZSpaCardConfig): boolean {
+function nightUsage(states: States, cfg: LayZSpaCardConfig): boolean {
   return !!cfg.usage && NIGHT_USES.includes(states[cfg.usage]?.state ?? "");
+}
+
+function skippingToday(states: States, cfg: LayZSpaCardConfig): boolean {
+  return !!cfg.skip_today && states[cfg.skip_today]?.state === "on";
+}
+
+/** Uso Hoy/Siempre y no se ha dicho «Hoy no lo uso» (con él, el día cuenta como uso No). */
+function usesNight(states: States, cfg: LayZSpaCardConfig): boolean {
+  return nightUsage(states, cfg) && !skippingToday(states, cfg);
 }
 
 function helperRange(attrs: Record<string, unknown>) {
@@ -124,13 +133,27 @@ export function timeSettingView(states: States, cfg: LayZSpaCardConfig, key: Tim
   return { entity, value: e.state.slice(0, 5) };
 }
 
+/** «Hoy no lo uso» en los ajustes: con uso Hoy/Siempre, o encendido (para poder apagarlo). */
+export function skipTodayView(states: States, cfg: LayZSpaCardConfig): { entity: string; on: boolean } | null {
+  const entity = cfg.skip_today;
+  if (!entity || !plannerActive(states, cfg) || !isValid(states[entity])) return null;
+  const on = skippingToday(states, cfg);
+  return on || nightUsage(states, cfg) ? { entity, on } : null;
+}
+
+export function skipTodayCall(entity: string, on: boolean) {
+  return { domain: "input_boolean", service: on ? "turn_on" : "turn_off", data: { entity_id: entity } };
+}
+
 /** Texto del bloque de ajustes plegado: "Mant. 30 °C · Baño 20:00–23:30" (fin 00:00 = sin fin). */
 export function settingsSummary(
   maint: { value: number | null } | null,
   readyAt: { value: string } | null,
-  until: { value: string } | null = null
+  until: { value: string } | null = null,
+  skipToday = false
 ): string {
   const parts: string[] = [];
+  if (skipToday) parts.push("Hoy no se usa");
   if (maint) parts.push(`Mant. ${maint.value !== null ? formatTemp(maint.value) : "--"} °C`);
   if (readyAt) parts.push(`Baño ${readyAt.value}${until && until.value !== "00:00" ? `–${until.value}` : ""}`);
   return parts.join(" · ");

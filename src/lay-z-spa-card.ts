@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { answerCall, answerView, type Answer, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, timeSettingView, targetCall, targetSource, usageView } from "./planner";
+import { answerCall, answerView, type Answer, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, skipTodayCall, skipTodayView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -334,7 +334,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const until = timeSettingView(states, this.config, "ready_until");
     const workday = timeSettingView(states, this.config, "ready_time_workday");
     const holiday = timeSettingView(states, this.config, "ready_time_holiday");
-    const hasSettings = !!(maint || readyAt || until || workday || holiday);
+    const skip = skipTodayView(states, this.config);
+    const hasSettings = !!(maint || readyAt || until || workday || holiday || skip);
     if (!plan && !usage && !hasSettings) return nothing;
     return html`
       ${plan
@@ -368,9 +369,16 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
         ? html`<div class="settings ${this._settingsOpen ? "open" : ""}">
             <button class="settings-toggle" aria-expanded=${this._settingsOpen ? "true" : "false"} @click=${this._toggleSettings}>
               <ha-icon icon="mdi:tune-variant"></ha-icon>
-              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary(maint, readyAt, until) || "Horas del baño"}</span>
+              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary(maint, readyAt, until, !!skip?.on) || "Horas del baño"}</span>
               <ha-icon class="chevron" icon="mdi:chevron-down"></ha-icon>
             </button>
+            ${this._settingsOpen && skip
+              ? html`<div class="setting">
+                  <ha-icon icon="mdi:calendar-remove"></ha-icon>
+                  <span class="setting-label">Hoy no lo uso</span>
+                  <ha-switch .checked=${skip.on} @change=${(e: Event) => this._setSkipToday(skip.entity, e)}></ha-switch>
+                </div>`
+              : nothing}
             ${this._settingsOpen && maint
               ? html`<div class="setting">
                   <ha-icon icon="mdi:wrench-outline"></ha-icon>
@@ -404,6 +412,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   private _setUsage(option: string): void {
     if (!this.config.usage) return;
     this.hass.callService("input_select", "select_option", { entity_id: this.config.usage, option });
+  }
+
+  private _setSkipToday(entity: string, e: Event): void {
+    const c = skipTodayCall(entity, (e.target as HTMLInputElement).checked);
+    this.hass.callService(c.domain, c.service, c.data);
   }
 
   private _toggleSettings = (): void => {

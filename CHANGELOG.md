@@ -4,6 +4,15 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.9] - 2026-10-07
+
+### Añadido
+- **«Hoy no lo uso»** en los ajustes (clave nueva `skip_today`, `input_boolean.jacuzzi_hoy_no`): un interruptor
+  para dejar el jacuzzi solo en mantenimiento el resto del día sin cambiar el uso. Se ofrece con uso Hoy/Siempre
+  (y siempre que esté encendido, para poder apagarlo). Encendido, la tarjeta trata el día como uso No: el dial
+  edita el mantenimiento, se oculta «Baño hoy a las» y el resumen plegado dice «Hoy no se usa». Lo apaga
+  Home Assistant a medianoche.
+
 ## [0.2.8] - 2026-10-06
 
 ### Añadido

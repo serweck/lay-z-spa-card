@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall, skipTodayView, skipTodayCall } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -18,6 +18,7 @@ const cfg: LayZSpaCardConfig = {
   ready_until: "input_datetime.fin",
   ready_time_workday: "input_datetime.lab",
   ready_time_holiday: "input_datetime.fest",
+  skip_today: "input_boolean.hoy_no",
 };
 const s = (state: string, attributes: Record<string, unknown> = {}) => ({ state, attributes });
 const num = (v: string) => s(v, { min: 20, max: 40, step: 1 });
@@ -234,5 +235,37 @@ describe("timeSettingView (horas de los ajustes)", () => {
     expect(timeSettingView(con({ "input_boolean.plan": s("off") }), cfg, "ready_until")).toBeNull();
     expect(timeSettingView(con(), { ...cfg, ready_until: undefined }, "ready_until")).toBeNull();
     expect(timeSettingView(con({ "input_datetime.fin": s("unknown") }), cfg, "ready_until")).toBeNull();
+  });
+});
+
+describe("skipTodayView («Hoy no lo uso»)", () => {
+  const siempre = s("Siempre", { options: ["No", "Hoy", "Siempre"] });
+  it("con uso Siempre se ofrece, apagado", () => {
+    expect(skipTodayView(base({ "input_select.uso": siempre, "input_boolean.hoy_no": s("off") }), cfg)).toEqual({ entity: "input_boolean.hoy_no", on: false });
+  });
+  it("con uso No no tiene sentido: no se muestra", () => {
+    expect(skipTodayView(base({ "input_select.uso": s("No", { options: ["No", "Hoy", "Siempre"] }), "input_boolean.hoy_no": s("off") }), cfg)).toBeNull();
+  });
+  it("encendido se muestra siempre, para poder apagarlo", () => {
+    expect(skipTodayView(base({ "input_select.uso": s("No", { options: ["No", "Hoy", "Siempre"] }), "input_boolean.hoy_no": s("on") }), cfg)).toEqual({ entity: "input_boolean.hoy_no", on: true });
+  });
+  it("planificador apagado o sin la clave: nada", () => {
+    expect(skipTodayView(base({ "input_boolean.plan": s("off"), "input_boolean.hoy_no": s("off") }), cfg)).toBeNull();
+    const { skip_today: _, ...sinClave } = cfg;
+    expect(skipTodayView(base({ "input_boolean.hoy_no": s("off") }), sinClave as LayZSpaCardConfig)).toBeNull();
+  });
+  it("encendido, el día cuenta como uso No: el dial edita el mantenimiento y se ocultan las horas de hoy", () => {
+    const st = base({ "input_select.uso": siempre, "input_boolean.hoy_no": s("on") });
+    expect(targetSource(st, cfg)).toMatchObject({ entity: "input_number.mant", caption: "mantenimiento" });
+    expect(readyTimeView(st, cfg)).toBeNull();
+    expect(maintenanceView(st, cfg)).toBeNull();
+  });
+  it("el resumen plegado lo dice", () => {
+    expect(settingsSummary(null, null, null, true)).toBe("Hoy no se usa");
+    expect(settingsSummary({ value: 30 }, { value: "20:00" }, null, false)).toBe("Mant. 30 °C · Baño 20:00");
+  });
+  it("skipTodayCall enciende o apaga el input_boolean", () => {
+    expect(skipTodayCall("input_boolean.hoy_no", true)).toEqual({ domain: "input_boolean", service: "turn_on", data: { entity_id: "input_boolean.hoy_no" } });
+    expect(skipTodayCall("input_boolean.hoy_no", false)).toEqual({ domain: "input_boolean", service: "turn_off", data: { entity_id: "input_boolean.hoy_no" } });
   });
 });

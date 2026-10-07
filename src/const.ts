@@ -1,6 +1,6 @@
 import type { EntityKey } from "./types";
 
-export const CARD_VERSION = "0.2.8";
+export const CARD_VERSION = "0.2.9";
 export const CARD_TAG = "lay-z-spa-card";
 export const EDITOR_TAG = "lay-z-spa-card-editor";
 
@@ -33,4 +33,5 @@ export const DEFAULT_ENTITIES: Record<EntityKey, string> = {
   ready_until: "input_datetime.jacuzzi_hora_fin",
   ready_time_workday: "input_datetime.jacuzzi_hora_listo_por_defecto",
   ready_time_holiday: "input_datetime.jacuzzi_hora_listo_festivos",
+  skip_today: "input_boolean.jacuzzi_hoy_no",
 };
