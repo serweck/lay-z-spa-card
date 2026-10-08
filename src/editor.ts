@@ -30,6 +30,8 @@ const SCHEMA = [
   { name: "ready_time_workday", selector: { entity: { domain: "input_datetime" } } },
   { name: "ready_time_holiday", selector: { entity: { domain: "input_datetime" } } },
   { name: "skip_today", selector: { entity: { domain: "input_boolean" } } },
+  { name: "filter_min", selector: { entity: { domain: "input_number" } } },
+  { name: "filter_today", selector: { entity: { domain: "sensor" } } },
 ];
 
 const LABELS: Record<string, string> = {
@@ -58,6 +60,8 @@ const LABELS: Record<string, string> = {
   ready_time_workday: "Planificador: hora del baño por defecto, laborables (input_datetime)",
   ready_time_holiday: "Planificador: hora del baño por defecto, fines de semana y festivos (input_datetime)",
   skip_today: "Planificador: hoy no lo uso, solo mantenimiento hasta medianoche (input_boolean)",
+  filter_min: "Planificador: depuración mínima diaria, en horas (input_number)",
+  filter_today: "Planificador: horas de bomba de hoy (sensor)",
 };
 
 @customElement(EDITOR_TAG)

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall, skipTodayView, skipTodayCall } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall, skipTodayView, skipTodayCall, filterView, formatHours } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -19,6 +19,8 @@ const cfg: LayZSpaCardConfig = {
   ready_time_workday: "input_datetime.lab",
   ready_time_holiday: "input_datetime.fest",
   skip_today: "input_boolean.hoy_no",
+  filter_min: "input_number.dep_min",
+  filter_today: "sensor.dep_hoy",
 };
 const s = (state: string, attributes: Record<string, unknown> = {}) => ({ state, attributes });
 const num = (v: string) => s(v, { min: 20, max: 40, step: 1 });
@@ -77,7 +79,7 @@ describe("targetCall", () => {
 
 describe("planView", () => {
   it("lee el JSON del plan", () => {
-    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, grid: true, observing: false, rule: 4, ask: false, kept: false, forced: false });
+    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, filtering: false, grid: true, observing: false, rule: 4, ask: false, kept: false, forced: false });
   });
   it("marca el modo observar", () => {
     expect(planView(base({ "input_boolean.obs": s("on") }), cfg)?.observing).toBe(true);
@@ -267,5 +269,37 @@ describe("skipTodayView («Hoy no lo uso»)", () => {
   it("skipTodayCall enciende o apaga el input_boolean", () => {
     expect(skipTodayCall("input_boolean.hoy_no", true)).toEqual({ domain: "input_boolean", service: "turn_on", data: { entity_id: "input_boolean.hoy_no" } });
     expect(skipTodayCall("input_boolean.hoy_no", false)).toEqual({ domain: "input_boolean", service: "turn_off", data: { entity_id: "input_boolean.hoy_no" } });
+  });
+});
+
+describe("filterView (depuración mínima)", () => {
+  const dep = { "input_number.dep_min": s("4.0", { min: 0, max: 12, step: 0.5 }), "sensor.dep_hoy": s("2.3") };
+  it("con el planificador, sea cual sea el uso, con las horas de hoy", () => {
+    expect(filterView(base({ ...dep, "input_select.uso": s("No", { options: ["No", "Hoy", "Siempre"] }) }), cfg)).toEqual({
+      entity: "input_number.dep_min", value: 4, min: 0, max: 12, step: 0.5, today: 2.3,
+    });
+  });
+  it("sin sensor de hoy, today null", () => {
+    expect(filterView(base({ "input_number.dep_min": dep["input_number.dep_min"] }), cfg)?.today).toBeNull();
+  });
+  it("planificador apagado o sin clave: nada", () => {
+    expect(filterView(base({ ...dep, "input_boolean.plan": s("off") }), cfg)).toBeNull();
+    const { filter_min: _f, ...sinClave } = cfg;
+    expect(filterView(base(dep), sinClave as LayZSpaCardConfig)).toBeNull();
+  });
+  it("formatHours", () => {
+    expect(formatHours(4)).toBe("4 h");
+    expect(formatHours(3.5)).toBe("3 h 30");
+    expect(formatHours(0.25)).toBe("0 h 15");
+    expect(formatHours(2.3)).toBe("2 h 18");
+  });
+  it("resumen plegado con la depuración", () => {
+    expect(settingsSummary({ value: 30 }, { value: "20:00" }, null, false, { value: 4 })).toBe("Mant. 30 °C · Baño 20:00 · Dep. 4 h");
+    expect(settingsSummary(null, null, null, false, { value: 0 })).toBe("");
+  });
+  it("planView marca la depuración", () => {
+    const p = planView(base({ "sensor.plan": s('{"a":"depurar","t":37,"r":false,"n":13,"m":"Agua a 37 °C: depurando"}') }), cfg);
+    expect(p?.filtering).toBe(true);
+    expect(p?.heating).toBe(false);
   });
 });

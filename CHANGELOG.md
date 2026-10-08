@@ -4,6 +4,15 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.10] - 2026-10-08
+
+### Añadido
+- **Depuración mínima** en los ajustes (claves nuevas `filter_min`, `input_number.jacuzzi_depuracion_minima`, y
+  `filter_today`, `sensor.jacuzzi_depuracion_hoy`): horas de bomba al día con − / +, y al lado lo que lleva hoy
+  (calentando también cuenta). Se ofrece con el planificador, sea cual sea el uso; el resumen plegado añade
+  «Dep. 4 h».
+- Con el plan en «depurar» (bomba sin calefacción) el icono del plan es un filtro.
+
 ## [0.2.9] - 2026-10-07
 
 ### Añadido

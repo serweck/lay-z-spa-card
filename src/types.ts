@@ -50,6 +50,10 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   ready_time_holiday?: string;
   /** input_boolean: «Hoy no lo uso» (el día cuenta como uso No; se apaga a medianoche). */
   skip_today?: string;
+  /** input_number (h): horas mínimas de depuración al día (calentando también cuenta). */
+  filter_min?: string;
+  /** sensor (h): horas de bomba de hoy (history_stats). */
+  filter_today?: string;
 }
 
 export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name">;

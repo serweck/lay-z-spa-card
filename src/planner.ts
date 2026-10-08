@@ -54,7 +54,7 @@ export function targetCall(src: TargetSource, value: number) {
     : { domain: "climate", service: "set_temperature", data: { entity_id: src.entity, temperature: value } };
 }
 
-export type PlanView = { text: string; heating: boolean; grid: boolean; observing: boolean; rule: number; ask: boolean; kept: boolean; forced: boolean };
+export type PlanView = { text: string; heating: boolean; filtering: boolean; grid: boolean; observing: boolean; rule: number; ask: boolean; kept: boolean; forced: boolean };
 
 export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | null {
   if (!cfg.plan || !plannerActive(states, cfg)) return null;
@@ -69,6 +69,7 @@ export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | nul
   return {
     text: String(p.m ?? ""),
     heating: p.a === "calentar",
+    filtering: p.a === "depurar",
     grid: p.r === true,
     observing: !!cfg.observe && states[cfg.observe]?.state === "on",
     rule: Number(p.n ?? -1),
@@ -141,6 +142,32 @@ export function skipTodayView(states: States, cfg: LayZSpaCardConfig): { entity:
   return on || nightUsage(states, cfg) ? { entity, on } : null;
 }
 
+/** Depuración mínima diaria en los ajustes: con el planificador, sea cual sea el uso. today = horas de bomba de hoy. */
+export function filterView(
+  states: States,
+  cfg: LayZSpaCardConfig
+): { entity: string; value: number | null; min: number; max: number; step: number; today: number | null } | null {
+  const entity = cfg.filter_min;
+  if (!entity || !plannerActive(states, cfg) || !isValid(states[entity])) return null;
+  const a = states[entity].attributes;
+  return {
+    entity,
+    value: numberOf(states[entity]),
+    min: toNumber(a.min) ?? 0,
+    max: toNumber(a.max) ?? 12,
+    step: toNumber(a.step) ?? 0.5,
+    today: numberOf(cfg.filter_today ? states[cfg.filter_today] : undefined),
+  };
+}
+
+/** Horas como en un reloj: 4 → "4 h", 3.5 → "3 h 30", 0.25 → "0 h 15". */
+export function formatHours(h: number): string {
+  const min = Math.round(h * 60);
+  const hh = Math.floor(min / 60);
+  const mm = min % 60;
+  return mm ? `${hh} h ${String(mm).padStart(2, "0")}` : `${hh} h`;
+}
+
 export function skipTodayCall(entity: string, on: boolean) {
   return { domain: "input_boolean", service: on ? "turn_on" : "turn_off", data: { entity_id: entity } };
 }
@@ -150,12 +177,14 @@ export function settingsSummary(
   maint: { value: number | null } | null,
   readyAt: { value: string } | null,
   until: { value: string } | null = null,
-  skipToday = false
+  skipToday = false,
+  filter: { value: number | null } | null = null
 ): string {
   const parts: string[] = [];
   if (skipToday) parts.push("Hoy no se usa");
   if (maint) parts.push(`Mant. ${maint.value !== null ? formatTemp(maint.value) : "--"} °C`);
   if (readyAt) parts.push(`Baño ${readyAt.value}${until && until.value !== "00:00" ? `–${until.value}` : ""}`);
+  if (filter && filter.value) parts.push(`Dep. ${formatHours(filter.value)}`);
   return parts.join(" · ");
 }
 
