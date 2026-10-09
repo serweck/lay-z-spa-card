@@ -33,7 +33,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { answerCall, answerView, type Answer, filterView, formatHours, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, skipTodayCall, skipTodayView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
+import { answerCall, answerView, type Answer, filterView, finishedView, formatHours, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, skipTodayCall, skipTodayView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -331,6 +331,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const maint = maintenanceView(states, this.config);
     const readyAt = readyTimeView(states, this.config);
     const answer = answerView(states, this.config);
+    const finished = finishedView(states, this.config, new Date());
     const until = timeSettingView(states, this.config, "ready_until");
     const workday = timeSettingView(states, this.config, "ready_time_workday");
     const holiday = timeSettingView(states, this.config, "ready_time_holiday");
@@ -345,18 +346,23 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
             <span>${plan.observing ? "Observando: " : ""}${plan.text}${plan.grid ? " · red" : ""}</span>
           </div>`
         : nothing}
-      ${answer
+      ${answer || finished
         ? html`<div class="answer">
-            ${answer.mode === "forced"
+            ${!answer || answer.mode === "forced"
               ? nothing
               : html`<button class="heat" @click=${() => this._answer(answer.script, "jacuzzi_calentar")}>
                   <ha-icon icon="mdi:fire"></ha-icon>Calentar igualmente
                 </button>`}
-            ${answer.mode === "kept"
+            ${!answer || answer.mode === "kept"
               ? nothing
               : html`<button @click=${() => this._answer(answer.script, "jacuzzi_mantener")}>
                   <ha-icon icon="mdi:snowflake"></ha-icon>Mantener
                 </button>`}
+            ${finished
+              ? html`<button title="Solo mantenimiento hasta medianoche; mañana vuelve el uso de siempre" @click=${() => this._finish(finished.entity)}>
+                  <ha-icon icon="mdi:check-circle-outline"></ha-icon>Hemos terminado
+                </button>`
+              : nothing}
           </div>`
         : nothing}
       ${usage
@@ -424,6 +430,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   private _setUsage(option: string): void {
     if (!this.config.usage) return;
     this.hass.callService("input_select", "select_option", { entity_id: this.config.usage, option });
+  }
+
+  private _finish(entity: string): void {
+    const c = skipTodayCall(entity, true);
+    this.hass.callService(c.domain, c.service, c.data);
   }
 
   private _setSkipToday(entity: string, e: Event): void {

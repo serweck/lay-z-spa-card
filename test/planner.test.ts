@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall, skipTodayView, skipTodayCall, filterView, formatHours } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall, skipTodayView, skipTodayCall, filterView, formatHours, finishedView } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -301,5 +301,20 @@ describe("filterView (depuración mínima)", () => {
     const p = planView(base({ "sensor.plan": s('{"a":"depurar","t":37,"r":false,"n":13,"m":"Agua a 37 °C: depurando"}') }), cfg);
     expect(p?.filtering).toBe(true);
     expect(p?.heating).toBe(false);
+  });
+});
+
+describe("finishedView («Hemos terminado»)", () => {
+  const at = (h: number, m = 0) => new Date(2026, 9, 8, h, m);
+  const st = (over: States = {}) => base({ "input_select.uso": s("Siempre", { options: ["No", "Hoy", "Siempre"] }), "input_boolean.hoy_no": s("off"), "input_datetime.hora": s("21:00:00", { has_date: false, has_time: true }), ...over });
+  it("desde 30 min antes de la hora del baño", () => {
+    expect(finishedView(st(), cfg, at(20, 29))).toBeNull();
+    expect(finishedView(st(), cfg, at(20, 30))).toEqual({ entity: "input_boolean.hoy_no" });
+    expect(finishedView(st(), cfg, at(22, 55))).toEqual({ entity: "input_boolean.hoy_no" });
+  });
+  it("no con «Hoy no lo uso» ya puesto, uso No o planificador apagado", () => {
+    expect(finishedView(st({ "input_boolean.hoy_no": s("on") }), cfg, at(22))).toBeNull();
+    expect(finishedView(st({ "input_select.uso": s("No", { options: ["No", "Hoy", "Siempre"] }) }), cfg, at(22))).toBeNull();
+    expect(finishedView(st({ "input_boolean.plan": s("off") }), cfg, at(22))).toBeNull();
   });
 });

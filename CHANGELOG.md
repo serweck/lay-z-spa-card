@@ -4,6 +4,13 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.11] - 2026-10-09
+
+### Añadido
+- Botón **«Hemos terminado»** junto al plan los días de baño, desde 30 min antes de la hora del baño. Enciende
+  «Hoy no lo uso» (`skip_today`): solo mantenimiento hasta medianoche y al día siguiente vuelve el uso de siempre.
+  Convive con «Calentar igualmente» / «Mantener».
+
 ## [0.2.10] - 2026-10-08
 
 ### Añadido

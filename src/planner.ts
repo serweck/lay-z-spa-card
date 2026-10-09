@@ -168,6 +168,18 @@ export function formatHours(h: number): string {
   return mm ? `${hh} h ${String(mm).padStart(2, "0")}` : `${hh} h`;
 }
 
+/** «Hemos terminado»: día de baño, aún no se ha dicho «Hoy no lo uso» y faltan menos de 30 min para la hora del
+ *  baño (o ya pasó). Enciende el mismo interruptor que «Hoy no lo uso»: solo mantenimiento hasta medianoche. */
+export function finishedView(states: States, cfg: LayZSpaCardConfig, now: Date): { entity: string } | null {
+  const entity = cfg.skip_today;
+  if (!entity || !plannerActive(states, cfg) || !isValid(states[entity]) || !usesNight(states, cfg)) return null;
+  const ready = readyTimeView(states, cfg);
+  if (!ready) return null;
+  const [hh, mm] = ready.value.split(":").map(Number);
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return minutes >= hh * 60 + mm - 30 ? { entity } : null;
+}
+
 export function skipTodayCall(entity: string, on: boolean) {
   return { domain: "input_boolean", service: on ? "turn_on" : "turn_off", data: { entity_id: entity } };
 }
