@@ -4,6 +4,13 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.12] - 2026-10-17
+
+### Corregido
+- Tras reiniciar HA salía «Placa WiFi sin conexión» con la placa conectada. La plantilla de modo de la placa da
+  `idle` con el agua en el objetivo y HA la descarta, así que el climate se queda en `unknown`. Ahora, con el
+  climate en `unknown`, el modo se deduce de `hvac_action` (`idle`/`heating` → calentar, `fan` → depurar, `off`).
+
 ## [0.2.11] - 2026-10-09
 
 ### Añadido
