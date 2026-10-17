@@ -6,6 +6,7 @@ import { CARD_TAG, CARD_VERSION, EDITOR_TAG } from "./const";
 import {
   AVAILABILITY_TEXT,
   availability,
+  climateMode,
   bubblesState,
   displayTarget,
   dragResult,
@@ -112,7 +113,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
 
     const avail = availability(states, this.config);
     const ok = avail === "ok";
-    const mode = climate.state;
+    const mode = climateMode(climate) ?? climate.state;
     const meta = MODE_META[mode];
     const accent = ok && meta ? meta.color : GREY;
     const dotColor = ok && meta ? meta.dot : "#4a4b4f";

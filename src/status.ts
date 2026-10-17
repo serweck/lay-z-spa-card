@@ -29,6 +29,17 @@ function get(states: States, id?: string): EntityState | undefined {
   return id ? states[id] : undefined;
 }
 
+/** hvac_action de la placa → modo. Su plantilla de modo devuelve «idle» con el agua en el objetivo, que HA descarta:
+ *  tras reiniciar HA el climate se queda en unknown hasta que la placa cambie de estado (17-10). */
+const MODE_OF_ACTION: Record<string, string> = { heating: "heat", idle: "heat", fan: "fan_only", off: "off" };
+
+/** Modo del climate; si está en unknown, el que indica hvac_action. null si no hay dato. */
+export function climateMode(e?: EntityState): string | null {
+  if (!e || e.state === "unavailable") return null;
+  if (e.state !== "unknown") return e.state;
+  return MODE_OF_ACTION[String(e.attributes.hvac_action)] ?? null;
+}
+
 export type Availability = "ok" | "no_power" | "rcd_tripped" | "board_offline";
 
 export function availability(states: States, cfg: LayZSpaCardConfig): Availability {
@@ -39,7 +50,7 @@ export function availability(states: States, cfg: LayZSpaCardConfig): Availabili
     const w = numberOf(get(states, cfg.power));
     return w !== null && w < RCD_POWER_THRESHOLD_W ? "rcd_tripped" : "board_offline";
   }
-  return isValid(states[cfg.climate]) ? "ok" : "board_offline";
+  return climateMode(states[cfg.climate]) !== null ? "ok" : "board_offline";
 }
 
 export const AVAILABILITY_TEXT: Record<

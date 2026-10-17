@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   toNumber,
   availability,
+  climateMode,
   AVAILABILITY_TEXT,
   errorCode,
   formatPower,
@@ -93,6 +94,12 @@ describe("availability", () => {
   });
   it("board_offline si el climate no esta disponible aunque connection diga on", () => {
     expect(availability(base({ "climate.spa": s("unavailable") }), cfg)).toBe("board_offline");
+  });
+  it("climate unknown tras reiniciar HA con hvac_action valido es ok (17-10)", () => {
+    expect(availability(base({ "climate.spa": s("unknown", { hvac_action: "idle" }) }), cfg)).toBe("ok");
+  });
+  it("climate unknown sin hvac_action sigue siendo board_offline", () => {
+    expect(availability(base({ "climate.spa": s("unknown") }), cfg)).toBe("board_offline");
   });
   it("sin Shelly configurado, placa caida es board_offline", () => {
     const min: LayZSpaCardConfig = { type: "x", climate: "climate.spa", connection: "binary_sensor.conn" };
@@ -250,5 +257,22 @@ describe("bubblesState", () => {
   it("unavailable si el switch no tiene dato o no existe", () => {
     expect(bubblesState(base({ "switch.b": s("unavailable") }), bcfg)).toBe("unavailable");
     expect(bubblesState(base(), bcfg)).toBe("unavailable");
+  });
+});
+
+describe("climateMode", () => {
+  it("usa el estado del climate si es valido", () => {
+    expect(climateMode(s("fan_only", { hvac_action: "fan" }))).toBe("fan_only");
+  });
+  it("con el climate unknown, lo deduce de hvac_action", () => {
+    expect(climateMode(s("unknown", { hvac_action: "idle" }))).toBe("heat");
+    expect(climateMode(s("unknown", { hvac_action: "heating" }))).toBe("heat");
+    expect(climateMode(s("unknown", { hvac_action: "fan" }))).toBe("fan_only");
+    expect(climateMode(s("unknown", { hvac_action: "off" }))).toBe("off");
+  });
+  it("sin dato util devuelve null", () => {
+    expect(climateMode(s("unknown"))).toBeNull();
+    expect(climateMode(s("unavailable", { hvac_action: "idle" }))).toBeNull();
+    expect(climateMode(undefined)).toBeNull();
   });
 });
