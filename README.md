@@ -89,7 +89,7 @@ grid_extra: sensor.jacuzzi_extra_red
 | Clave | Para qué |
 |---|---|
 | `usage` | Selector No · Hoy · Siempre |
-| `desired` / `maintenance` | Lo que edita el dial con el planificador encendido (Hoy/Siempre → deseada; No → mantenimiento) |
+| `desired` / `maintenance` | Lo que edita el dial con el planificador encendido (Hoy/Siempre → deseada; No o «Hoy no lo uso» → mantenimiento). Las dos están siempre en los ajustes con − / + |
 | `plan` | Línea con el motivo del plan (JSON `{a,t,r,n,m,h,l,v}`) |
 | `planner` | Encendido: activa el modo planificador de la tarjeta |
 | `observe` | Encendido: la línea del plan sale atenuada con "Observando:" |

@@ -34,7 +34,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { answerCall, answerView, type Answer, filterView, finishedView, formatHours, gridExtraW, maintenanceView, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, skipTodayCall, skipTodayView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
+import { answerCall, answerView, type Answer, filterView, finishedView, formatHours, gridExtraW, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, skipTodayCall, skipTodayView, tempSettingView, type TempSettingKey, type TempSettingView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -329,7 +329,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const states = this._states;
     const plan = planView(states, this.config);
     const usage = usageView(states, this.config);
-    const maint = maintenanceView(states, this.config);
+    const desired = tempSettingView(states, this.config, "desired");
+    const maint = tempSettingView(states, this.config, "maintenance");
     const readyAt = readyTimeView(states, this.config);
     const answer = answerView(states, this.config);
     const finished = finishedView(states, this.config, new Date());
@@ -338,7 +339,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const holiday = timeSettingView(states, this.config, "ready_time_holiday");
     const skip = skipTodayView(states, this.config);
     const filter = filterView(states, this.config);
-    const hasSettings = !!(maint || readyAt || until || workday || holiday || skip || filter);
+    const hasSettings = !!(desired || maint || readyAt || until || workday || holiday || skip || filter);
     if (!plan && !usage && !hasSettings) return nothing;
     return html`
       ${plan
@@ -377,7 +378,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
         ? html`<div class="settings ${this._settingsOpen ? "open" : ""}">
             <button class="settings-toggle" aria-expanded=${this._settingsOpen ? "true" : "false"} @click=${this._toggleSettings}>
               <ha-icon icon="mdi:tune-variant"></ha-icon>
-              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary(maint, readyAt, until, !!skip?.on, filter) || "Horas del baño"}</span>
+              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary({ desired, maint }, readyAt, until, !!skip?.on, filter) || "Horas del baño"}</span>
               <ha-icon class="chevron" icon="mdi:chevron-down"></ha-icon>
             </button>
             ${this._settingsOpen && skip
@@ -387,17 +388,8 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
                   <ha-switch .checked=${skip.on} @change=${(e: Event) => this._setSkipToday(skip.entity, e)}></ha-switch>
                 </div>`
               : nothing}
-            ${this._settingsOpen && maint
-              ? html`<div class="setting">
-                  <ha-icon icon="mdi:wrench-outline"></ha-icon>
-                  <span class="setting-label">Mantenimiento</span>
-                  <div class="pill">
-                    <button class="pill-btn" title="Bajar" @click=${() => this._stepMaintenance(-1)}><ha-icon icon="mdi:minus"></ha-icon></button>
-                    <span class="pill-value">${maint.value !== null ? formatTemp(maint.value) : "--"} °C</span>
-                    <button class="pill-btn" title="Subir" @click=${() => this._stepMaintenance(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
-                  </div>
-                </div>`
-              : nothing}
+            ${this._settingsOpen ? this._tempRow("mdi:thermometer-high", "Deseada", "desired", desired) : nothing}
+            ${this._settingsOpen ? this._tempRow("mdi:wrench-outline", "Mantenimiento", "maintenance", maint) : nothing}
             ${this._settingsOpen && filter
               ? html`<div class="setting">
                   <ha-icon icon="mdi:air-filter"></ha-icon>
@@ -464,8 +456,21 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     this.hass.callService("input_datetime", "set_datetime", { entity_id: entity, time: `${v}:00` });
   }
 
-  private _stepMaintenance(dir: number): void {
-    const m = maintenanceView(this._states, this.config);
+  private _tempRow(icon: string, label: string, key: TempSettingKey, view: TempSettingView | null): TemplateResult | typeof nothing {
+    if (!view) return nothing;
+    return html`<div class="setting">
+      <ha-icon icon=${icon}></ha-icon>
+      <span class="setting-label">${label}</span>
+      <div class="pill">
+        <button class="pill-btn" title="Bajar" @click=${() => this._stepTemp(key, -1)}><ha-icon icon="mdi:minus"></ha-icon></button>
+        <span class="pill-value">${view.value !== null ? formatTemp(view.value) : "--"} °C</span>
+        <button class="pill-btn" title="Subir" @click=${() => this._stepTemp(key, 1)}><ha-icon icon="mdi:plus"></ha-icon></button>
+      </div>
+    </div>`;
+  }
+
+  private _stepTemp(key: TempSettingKey, dir: number): void {
+    const m = tempSettingView(this._states, this.config, key);
     if (!m || m.value === null) return;
     const next = clampTarget(m.value + dir * m.step, m.min, m.max, m.step);
     if (next === m.value) return;

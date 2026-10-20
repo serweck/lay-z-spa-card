@@ -100,6 +100,8 @@
       "Planificador observando": base({ planner: "on", observe: "on", usage: "Siempre",
         plan: '{"a":"calentar","t":37,"r":false,"n":6,"m":"Remate para llegar a las 20:00","h":7.7,"l":"21:30","v":false}' }),
       "Planificador apagado (como 0.1.1)": base({ planner: "off", usage: "Hoy" }),
+      "Planificador con uso No (ajustes: deseada y mantenimiento)": base({ planner: "on", usage: "No",
+        plan: '{"a":"depurar","t":30,"r":false,"n":13,"m":"Agua a 30 °C: depurando","h":0,"l":"","v":false}' }),
     };
     const log = document.getElementById("log");
     await customElements.whenDefined("lay-z-spa-card");

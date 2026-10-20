@@ -107,9 +107,14 @@ export function usageView(states: States, cfg: LayZSpaCardConfig): { current: st
   return { current: e.state, options };
 }
 
-export function maintenanceView(states: States, cfg: LayZSpaCardConfig) {
-  if (!plannerActive(states, cfg) || !usesNight(states, cfg)) return null;
-  const entity = cfg.maintenance as string;
+export type TempSettingKey = "desired" | "maintenance";
+export type TempSettingView = { entity: string; value: number | null; min: number; max: number; step: number };
+
+/** Deseada y mantenimiento en los ajustes: con el planificador, sea cual sea el uso. Así se puede poner la deseada
+ *  aunque el dial esté editando el mantenimiento (uso No o «Hoy no lo uso») y decidir bañarse después. */
+export function tempSettingView(states: States, cfg: LayZSpaCardConfig, key: TempSettingKey): TempSettingView | null {
+  if (!plannerActive(states, cfg)) return null;
+  const entity = cfg[key] as string;
   const e = states[entity];
   const { min, max, step } = helperRange(e?.attributes ?? {});
   return { entity, value: numberOf(e), min, max, step };
@@ -185,8 +190,10 @@ export function skipTodayCall(entity: string, on: boolean) {
 }
 
 /** Texto del bloque de ajustes plegado: "Mant. 30 °C · Baño 20:00–23:30" (fin 00:00 = sin fin). */
+type SummaryTemp = { value: number | null } | null | undefined;
+
 export function settingsSummary(
-  maint: { value: number | null } | null,
+  temps: { desired?: SummaryTemp; maint?: SummaryTemp } | null,
   readyAt: { value: string } | null,
   until: { value: string } | null = null,
   skipToday = false,
@@ -194,7 +201,12 @@ export function settingsSummary(
 ): string {
   const parts: string[] = [];
   if (skipToday) parts.push("Hoy no se usa");
-  if (maint) parts.push(`Mant. ${maint.value !== null ? formatTemp(maint.value) : "--"} °C`);
+  const t = (v: { value: number | null }) => (v.value !== null ? formatTemp(v.value) : "--");
+  const desired = temps?.desired;
+  const maint = temps?.maint;
+  if (desired && maint) parts.push(`${t(desired)}/${t(maint)} °C`);
+  else if (desired) parts.push(`Deseada ${t(desired)} °C`);
+  else if (maint) parts.push(`Mant. ${t(maint)} °C`);
   if (readyAt) parts.push(`Baño ${readyAt.value}${until && until.value !== "00:00" ? `–${until.value}` : ""}`);
   if (filter && filter.value) parts.push(`Dep. ${formatHours(filter.value)}`);
   return parts.join(" · ");

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plannerActive, targetSource, targetCall, planView, usageView, maintenanceView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall, skipTodayView, skipTodayCall, filterView, formatHours, finishedView } from "../src/planner";
+import { plannerActive, targetSource, targetCall, planView, usageView, tempSettingView, gridExtraW, readyForTarget, plannerToggle, readyTimeView, timeSettingView, settingsSummary, answerView, answerCall, skipTodayView, skipTodayCall, filterView, formatHours, finishedView } from "../src/planner";
 import type { States } from "../src/status";
 import type { LayZSpaCardConfig } from "../src/types";
 
@@ -107,13 +107,23 @@ describe("usageView", () => {
   });
 });
 
-describe("maintenanceView", () => {
-  it("con uso Hoy/Siempre se muestra aparte para poder editarlo", () => {
-    expect(maintenanceView(base(), cfg)).toEqual({ entity: "input_number.mant", value: 30, min: 20, max: 40, step: 1 });
+describe("tempSettingView (deseada y mantenimiento en los ajustes)", () => {
+  it("con uso Hoy/Siempre, las dos", () => {
+    expect(tempSettingView(base(), cfg, "desired")).toEqual({ entity: "input_number.deseada", value: 37, min: 20, max: 40, step: 1 });
+    expect(tempSettingView(base(), cfg, "maintenance")).toEqual({ entity: "input_number.mant", value: 30, min: 20, max: 40, step: 1 });
   });
-  it("con uso No no (ya lo edita el dial) ni con el planificador apagado", () => {
-    expect(maintenanceView(base({ "input_select.uso": s("No", { options: ["No"] }) }), cfg)).toBeNull();
-    expect(maintenanceView(base({ "input_boolean.plan": s("off") }), cfg)).toBeNull();
+  it("con uso No también las dos: así se puede dejar puesta la deseada antes de decidir bañarse", () => {
+    const st = base({ "input_select.uso": s("No", { options: ["No", "Hoy", "Siempre"] }) });
+    expect(tempSettingView(st, cfg, "desired")?.value).toBe(37);
+    expect(tempSettingView(st, cfg, "maintenance")?.value).toBe(30);
+  });
+  it("con el planificador apagado, nada", () => {
+    const st = base({ "input_boolean.plan": s("off") });
+    expect(tempSettingView(st, cfg, "desired")).toBeNull();
+    expect(tempSettingView(st, cfg, "maintenance")).toBeNull();
+  });
+  it("sin dato, valor null", () => {
+    expect(tempSettingView(base({ "input_number.deseada": s("unavailable") }), cfg, "desired")?.value).toBeNull();
   });
 });
 
@@ -132,16 +142,21 @@ describe("readyTimeView", () => {
 
 describe("settingsSummary", () => {
   it("resume mantenimiento y hora del baño para el bloque plegado", () => {
-    expect(settingsSummary({ value: 30 }, { value: "20:00" })).toBe("Mant. 30 °C · Baño 20:00");
+    expect(settingsSummary({ maint: { value: 30 } }, { value: "20:00" })).toBe("Mant. 30 °C · Baño 20:00");
+  });
+  it("con deseada y mantenimiento, las dos juntas", () => {
+    expect(settingsSummary({ desired: { value: 38 }, maint: { value: 30 } }, { value: "21:00" })).toBe("38/30 °C · Baño 21:00");
+    expect(settingsSummary({ desired: { value: 37.5 }, maint: { value: null } }, null)).toBe("37,5/-- °C");
+    expect(settingsSummary({ desired: { value: 38 }, maint: null }, null)).toBe("Deseada 38 °C");
   });
   it("con hora de fin, el baño como franja (00:00 = sin fin)", () => {
-    expect(settingsSummary({ value: 30 }, { value: "20:00" }, { value: "23:30" })).toBe("Mant. 30 °C · Baño 20:00–23:30");
-    expect(settingsSummary({ value: 30 }, { value: "20:00" }, { value: "00:00" })).toBe("Mant. 30 °C · Baño 20:00");
+    expect(settingsSummary({ maint: { value: 30 } }, { value: "20:00" }, { value: "23:30" })).toBe("Mant. 30 °C · Baño 20:00–23:30");
+    expect(settingsSummary({ maint: { value: 30 } }, { value: "20:00" }, { value: "00:00" })).toBe("Mant. 30 °C · Baño 20:00");
   });
   it("con solo uno, o sin dato", () => {
-    expect(settingsSummary({ value: 29.5 }, null)).toBe("Mant. 29,5 °C");
+    expect(settingsSummary({ maint: { value: 29.5 } }, null)).toBe("Mant. 29,5 °C");
     expect(settingsSummary(null, { value: "14:30" })).toBe("Baño 14:30");
-    expect(settingsSummary({ value: null }, null)).toBe("Mant. -- °C");
+    expect(settingsSummary({ maint: { value: null } }, null)).toBe("Mant. -- °C");
   });
 });
 
@@ -256,15 +271,16 @@ describe("skipTodayView («Hoy no lo uso»)", () => {
     const { skip_today: _, ...sinClave } = cfg;
     expect(skipTodayView(base({ "input_boolean.hoy_no": s("off") }), sinClave as LayZSpaCardConfig)).toBeNull();
   });
-  it("encendido, el día cuenta como uso No: el dial edita el mantenimiento y se ocultan las horas de hoy", () => {
+  it("encendido, el día cuenta como uso No: el dial edita el mantenimiento y se ocultan las horas de hoy (las temperaturas siguen en los ajustes)", () => {
     const st = base({ "input_select.uso": siempre, "input_boolean.hoy_no": s("on") });
     expect(targetSource(st, cfg)).toMatchObject({ entity: "input_number.mant", caption: "mantenimiento" });
     expect(readyTimeView(st, cfg)).toBeNull();
-    expect(maintenanceView(st, cfg)).toBeNull();
+    expect(tempSettingView(st, cfg, "desired")?.value).toBe(37);
+    expect(tempSettingView(st, cfg, "maintenance")?.value).toBe(30);
   });
   it("el resumen plegado lo dice", () => {
     expect(settingsSummary(null, null, null, true)).toBe("Hoy no se usa");
-    expect(settingsSummary({ value: 30 }, { value: "20:00" }, null, false)).toBe("Mant. 30 °C · Baño 20:00");
+    expect(settingsSummary({ maint: { value: 30 } }, { value: "20:00" }, null, false)).toBe("Mant. 30 °C · Baño 20:00");
   });
   it("skipTodayCall enciende o apaga el input_boolean", () => {
     expect(skipTodayCall("input_boolean.hoy_no", true)).toEqual({ domain: "input_boolean", service: "turn_on", data: { entity_id: "input_boolean.hoy_no" } });
@@ -294,7 +310,7 @@ describe("filterView (depuración mínima)", () => {
     expect(formatHours(2.3)).toBe("2 h 18");
   });
   it("resumen plegado con la depuración", () => {
-    expect(settingsSummary({ value: 30 }, { value: "20:00" }, null, false, { value: 4 })).toBe("Mant. 30 °C · Baño 20:00 · Dep. 4 h");
+    expect(settingsSummary({ maint: { value: 30 } }, { value: "20:00" }, null, false, { value: 4 })).toBe("Mant. 30 °C · Baño 20:00 · Dep. 4 h");
     expect(settingsSummary(null, null, null, false, { value: 0 })).toBe("");
   });
   it("planView marca la depuración", () => {

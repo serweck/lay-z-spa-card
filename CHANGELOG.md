@@ -4,6 +4,17 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.2.13] - 2026-10-20
+
+### Añadido
+- **Deseada** en los ajustes, con − / +, junto al **Mantenimiento**. Las dos salen siempre con el planificador,
+  sea cual sea el uso y aunque esté puesto «Hoy no lo uso». Antes, con uso No u «Hoy no» el dial pasaba a editar el
+  mantenimiento y no había dónde poner la deseada sin cambiar el uso; y el mantenimiento solo salía los días de baño.
+  El dial sigue igual.
+
+### Cambiado
+- El resumen plegado muestra las dos temperaturas: «38/30 °C · Baño 21:00–23:30 · Dep. 4 h».
+
 ## [0.2.12] - 2026-10-17
 
 ### Corregido
