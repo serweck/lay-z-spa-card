@@ -365,6 +365,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
                   <ha-icon icon=${heatToday.on ? "mdi:calendar-remove" : "mdi:fire"}></ha-icon>${heatToday.on ? "Hoy no" : "Calentar hoy"}
                 </button>`
               : nothing}
+            ${heatToday && !heatToday.on && heatToday.time
+              ? html`<div class="pill" title="Hora del baño de hoy">
+                  <input class="ready-time" type="time" step="900" .value=${heatToday.time.value} @change=${(e: Event) => this._setTime(heatToday.time!.entity, e)} />
+                </div>`
+              : nothing}
             ${finished
               ? html`<button title="Solo mantenimiento hasta medianoche; mañana vuelve el uso de siempre" @click=${() => this._finish(finished.entity)}>
                   <ha-icon icon="mdi:check-circle-outline"></ha-icon>Hemos terminado

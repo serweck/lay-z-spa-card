@@ -183,13 +183,17 @@ export function scheduleView(states: States, cfg: LayZSpaCardConfig): ScheduleRo
   return rows.length ? rows : null;
 }
 
-/** «Calentar hoy»: con uso Siempre y hoy sin baño por guardia o día apagado, o ya activado (para deshacerlo). */
-export function heatTodayView(states: States, cfg: LayZSpaCardConfig): { entity: string; on: boolean; reason: NoBathReason } | null {
+/** «Calentar hoy»: con uso Siempre y hoy sin baño por guardia o día apagado, o ya activado (para deshacerlo).
+ *  time = hora de hoy, para poder ajustarla junto al botón antes de activarlo. */
+export function heatTodayView(
+  states: States,
+  cfg: LayZSpaCardConfig
+): { entity: string; on: boolean; reason: NoBathReason; time: { entity: string; value: string } | null } | null {
   const entity = cfg.heat_today;
   if (!entity || !plannerActive(states, cfg) || !isValid(states[entity])) return null;
   const on = states[entity].state === "on";
   const reason = planView(states, cfg)?.reason ?? "";
-  return on || reason ? { entity, on, reason } : null;
+  return on || reason ? { entity, on, reason, time: timeOf(states, cfg, cfg.ready_time) } : null;
 }
 
 /** «Hoy no lo uso» en los ajustes: con uso Hoy/Siempre, o encendido (para poder apagarlo). */

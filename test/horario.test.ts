@@ -100,10 +100,15 @@ describe("scheduleView", () => {
 
 describe("heatTodayView («Calentar hoy»)", () => {
   it("guardia y sin activar: botón para calentar", () => {
-    expect(heatTodayView(base({ "sensor.plan": plan({ b: false, g: "guardia" }) }), cfg)).toEqual({ entity: "input_boolean.hoy_si", on: false, reason: "guardia" });
+    expect(heatTodayView(base({ "sensor.plan": plan({ b: false, g: "guardia" }) }), cfg)).toEqual({
+      entity: "input_boolean.hoy_si",
+      on: false,
+      reason: "guardia",
+      time: { entity: "input_datetime.hora", value: "20:00" },
+    });
   });
   it("activado: botón para deshacer", () => {
-    expect(heatTodayView(base({ "input_boolean.hoy_si": s("on") }), cfg)).toEqual({ entity: "input_boolean.hoy_si", on: true, reason: "" });
+    expect(heatTodayView(base({ "input_boolean.hoy_si": s("on") }), cfg)).toMatchObject({ entity: "input_boolean.hoy_si", on: true, reason: "" });
   });
   it("día normal: nada", () => {
     expect(heatTodayView(base(), cfg)).toBeNull();
