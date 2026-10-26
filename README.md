@@ -84,13 +84,22 @@ plan: sensor.jacuzzi_plan
 planner: input_boolean.jacuzzi_planificador
 observe: input_boolean.jacuzzi_planificador_observar
 grid_extra: sensor.jacuzzi_extra_red
+heat_today: input_boolean.jacuzzi_hoy_si
+schedule_days: [input_boolean.jacuzzi_dia_lun, input_boolean.jacuzzi_dia_mar, input_boolean.jacuzzi_dia_mie,
+  input_boolean.jacuzzi_dia_jue, input_boolean.jacuzzi_dia_vie, input_boolean.jacuzzi_dia_sab,
+  input_boolean.jacuzzi_dia_dom, input_boolean.jacuzzi_dia_fes]
+schedule_times: [input_datetime.jacuzzi_hora_lun, input_datetime.jacuzzi_hora_mar, input_datetime.jacuzzi_hora_mie,
+  input_datetime.jacuzzi_hora_jue, input_datetime.jacuzzi_hora_vie, input_datetime.jacuzzi_hora_sab,
+  input_datetime.jacuzzi_hora_dom, input_datetime.jacuzzi_hora_fes]
 ```
 
 | Clave | Para qué |
 |---|---|
 | `usage` | Selector No · Hoy · Siempre |
-| `desired` / `maintenance` | Lo que edita el dial con el planificador encendido (Hoy/Siempre → deseada; No o «Hoy no lo uso» → mantenimiento). Las dos están siempre en los ajustes con − / + |
-| `plan` | Línea con el motivo del plan (JSON `{a,t,r,n,m,h,l,v}`) |
+| `desired` / `maintenance` | Lo que edita el dial con el planificador encendido: deseada si hoy hay baño según el plan (`b`), si no mantenimiento. Las dos están siempre en los ajustes con − / + |
+| `plan` | Línea con el motivo del plan (JSON `{a,t,r,n,m,h,l,v,b,g}`; `b` = hoy hay baño, `g` = guardia/apagado) |
+| `schedule_days` / `schedule_times` | Horario semanal en los ajustes: 8 filas (L…D, Festivo), interruptor y hora |
+| `heat_today` | Botón «Calentar hoy» cuando hoy no toca baño por guardia o día apagado |
 | `planner` | Encendido: activa el modo planificador de la tarjeta |
 | `observe` | Encendido: la línea del plan sale atenuada con "Observando:" |
 | `grid_extra` | Chip `+W` en la cabecera mientras se importa de la red para el jacuzzi |

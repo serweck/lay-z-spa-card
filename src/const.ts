@@ -1,6 +1,6 @@
 import type { EntityKey } from "./types";
 
-export const CARD_VERSION = "0.2.13";
+export const CARD_VERSION = "0.3.0";
 export const CARD_TAG = "lay-z-spa-card";
 export const EDITOR_TAG = "lay-z-spa-card-editor";
 
@@ -31,9 +31,13 @@ export const DEFAULT_ENTITIES: Record<EntityKey, string> = {
   ready_time: "input_datetime.jacuzzi_hora_listo",
   answer_script: "script.jacuzzi_respuesta_no_llega",
   ready_until: "input_datetime.jacuzzi_hora_fin",
-  ready_time_workday: "input_datetime.jacuzzi_hora_listo_por_defecto",
-  ready_time_holiday: "input_datetime.jacuzzi_hora_listo_festivos",
+  heat_today: "input_boolean.jacuzzi_hoy_si",
   skip_today: "input_boolean.jacuzzi_hoy_no",
   filter_min: "input_number.jacuzzi_depuracion_minima",
   filter_today: "sensor.jacuzzi_depuracion_hoy",
 };
+
+/** Horario semanal de casa (L, M, X, J, V, S, D, Festivo); getStubConfig los pone si existen los 8. */
+const SCHEDULE_DAYS = ["lun", "mar", "mie", "jue", "vie", "sab", "dom", "fes"];
+export const DEFAULT_SCHEDULE_DAYS = SCHEDULE_DAYS.map((d) => `input_boolean.jacuzzi_dia_${d}`);
+export const DEFAULT_SCHEDULE_TIMES = SCHEDULE_DAYS.map((d) => `input_datetime.jacuzzi_hora_${d}`);

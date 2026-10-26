@@ -34,7 +34,7 @@ import {
   valueFromAngle,
 } from "./dial";
 import { detectEntities } from "./detect";
-import { answerCall, answerView, type Answer, filterView, finishedView, formatHours, gridExtraW, planView, plannerToggle, readyForTarget, readyTimeView, settingsSummary, skipTodayCall, skipTodayView, tempSettingView, type TempSettingKey, type TempSettingView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
+import { answerCall, answerView, type Answer, filterView, finishedView, formatHours, gridExtraW, heatTodayView, planView, plannerToggle, readyForTarget, readyTimeView, scheduleView, type ScheduleRow, settingsSummary, skipTodayCall, skipTodayView, tempSettingView, type TempSettingKey, type TempSettingView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -335,11 +335,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
     const answer = answerView(states, this.config);
     const finished = finishedView(states, this.config, new Date());
     const until = timeSettingView(states, this.config, "ready_until");
-    const workday = timeSettingView(states, this.config, "ready_time_workday");
-    const holiday = timeSettingView(states, this.config, "ready_time_holiday");
+    const schedule = scheduleView(states, this.config);
+    const heatToday = heatTodayView(states, this.config);
     const skip = skipTodayView(states, this.config);
     const filter = filterView(states, this.config);
-    const hasSettings = !!(desired || maint || readyAt || until || workday || holiday || skip || filter);
+    const hasSettings = !!(desired || maint || readyAt || until || schedule || skip || filter);
     if (!plan && !usage && !hasSettings) return nothing;
     return html`
       ${plan
@@ -348,7 +348,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
             <span>${plan.observing ? "Observando: " : ""}${plan.text}${plan.grid ? " · red" : ""}</span>
           </div>`
         : nothing}
-      ${answer || finished
+      ${answer || finished || heatToday
         ? html`<div class="answer">
             ${!answer || answer.mode === "forced"
               ? nothing
@@ -360,6 +360,11 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
               : html`<button @click=${() => this._answer(answer.script, "jacuzzi_mantener")}>
                   <ha-icon icon="mdi:snowflake"></ha-icon>Mantener
                 </button>`}
+            ${heatToday
+              ? html`<button class=${heatToday.on ? "" : "heat"} title="Solo hoy; a medianoche vuelve el horario" @click=${() => this._setHeatToday(heatToday.entity, !heatToday.on)}>
+                  <ha-icon icon=${heatToday.on ? "mdi:calendar-remove" : "mdi:fire"}></ha-icon>${heatToday.on ? "Hoy no" : "Calentar hoy"}
+                </button>`
+              : nothing}
             ${finished
               ? html`<button title="Solo mantenimiento hasta medianoche; mañana vuelve el uso de siempre" @click=${() => this._finish(finished.entity)}>
                   <ha-icon icon="mdi:check-circle-outline"></ha-icon>Hemos terminado
@@ -378,7 +383,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
         ? html`<div class="settings ${this._settingsOpen ? "open" : ""}">
             <button class="settings-toggle" aria-expanded=${this._settingsOpen ? "true" : "false"} @click=${this._toggleSettings}>
               <ha-icon icon="mdi:tune-variant"></ha-icon>
-              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary({ desired, maint }, readyAt, until, !!skip?.on, filter) || "Horas del baño"}</span>
+              <span class="setting-label">${this._settingsOpen ? "Ajustes" : settingsSummary({ desired, maint }, readyAt, until, !!skip?.on, filter, planView(states, this.config)?.bath === false) || "Horas del baño"}</span>
               <ha-icon class="chevron" icon="mdi:chevron-down"></ha-icon>
             </button>
             ${this._settingsOpen && skip
@@ -403,8 +408,13 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
               : nothing}
             ${this._settingsOpen ? this._timeRow("mdi:clock-outline", "Baño hoy a las", readyAt) : nothing}
             ${this._settingsOpen ? this._timeRow("mdi:clock-end", "Baño hasta", until) : nothing}
-            ${this._settingsOpen ? this._timeRow("mdi:briefcase-outline", "Laborables", workday) : nothing}
-            ${this._settingsOpen ? this._timeRow("mdi:party-popper", "Festivos y finde", holiday) : nothing}
+            ${this._settingsOpen && schedule
+              ? html`<div class="setting">
+                    <ha-icon icon="mdi:calendar-week"></ha-icon>
+                    <span class="setting-label">Horario</span>
+                  </div>
+                  ${schedule.map((row) => this._scheduleRow(row))}`
+              : nothing}
           </div>`
         : nothing}
     `;
@@ -448,6 +458,25 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
         <input class="ready-time" type="time" step="900" .value=${view.value} @change=${(e: Event) => this._setTime(view.entity, e)} />
       </div>
     </div>`;
+  }
+
+  /** Fila del horario: día, «hay baño» y hora (la hora se puede cambiar aunque el día esté apagado). */
+  private _scheduleRow(row: ScheduleRow): TemplateResult {
+    return html`<div class="setting day ${row.on ? "" : "off"}">
+      <span class="day-label">${row.label}</span>
+      <ha-switch .checked=${row.on} @change=${(e: Event) => this._setHeatToday(row.day, (e.target as HTMLInputElement).checked)}></ha-switch>
+      <span class="setting-label"></span>
+      ${row.time
+        ? html`<div class="pill">
+            <input class="ready-time" type="time" step="900" .value=${row.time.value} @change=${(e: Event) => this._setTime(row.time!.entity, e)} />
+          </div>`
+        : nothing}
+    </div>`;
+  }
+
+  private _setHeatToday(entity: string, on: boolean): void {
+    const c = skipTodayCall(entity, on);
+    this.hass.callService(c.domain, c.service, c.data);
   }
 
   private _setTime(entity: string, e: Event): void {
@@ -1018,6 +1047,17 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       text-align: center;
       color: var(--primary-text-color);
       font-variant-numeric: tabular-nums;
+    }
+    .setting.day {
+      min-height: 36px;
+      padding-left: 28px;
+    }
+    .setting.day.off input.ready-time {
+      opacity: 0.5;
+    }
+    .day-label {
+      min-width: 56px;
+      color: var(--primary-text-color);
     }
     input.ready-time {
       font: inherit;

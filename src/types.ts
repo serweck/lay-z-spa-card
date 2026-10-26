@@ -31,7 +31,7 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   desired?: string;
   /** input_number de la temperatura de mantenimiento (uso No). */
   maintenance?: string;
-  /** sensor con el plan en JSON {a,t,r,n,m,h,l,v}. */
+  /** sensor con el plan en JSON {a,t,r,n,m,h,l,v,b,g}. */
   plan?: string;
   /** input_boolean del planificador. */
   planner?: string;
@@ -44,10 +44,12 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   answer_script?: string;
   /** input_datetime (solo hora): hasta qué hora se mantiene la deseada; después, solo mantenimiento. */
   ready_until?: string;
-  /** input_datetime (solo hora): hora de listo por defecto los laborables. */
-  ready_time_workday?: string;
-  /** input_datetime (solo hora): hora de listo por defecto fines de semana y festivos. */
-  ready_time_holiday?: string;
+  /** 8 input_boolean del horario semanal (L, M, X, J, V, S, D, Festivo): ¿hay baño ese día? */
+  schedule_days?: string[];
+  /** 8 input_datetime (solo hora) del horario semanal, mismo orden: hora del baño ese día. */
+  schedule_times?: string[];
+  /** input_boolean: «Calentar hoy» (baño hoy aunque el día esté apagado o haya guardia; se apaga a medianoche). */
+  heat_today?: string;
   /** input_boolean: «Hoy no lo uso» (el día cuenta como uso No; se apaga a medianoche). */
   skip_today?: string;
   /** input_number (h): horas mínimas de depuración al día (calentando también cuenta). */
@@ -56,4 +58,4 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   filter_today?: string;
 }
 
-export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name">;
+export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name" | "schedule_days" | "schedule_times">;

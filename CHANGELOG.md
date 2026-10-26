@@ -4,6 +4,23 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.3.0] - 2026-10-26
+
+### Añadido
+- **Horario semanal** en los ajustes: una fila por día (L, M, X, J, V, S, D y Festivo) con «hay baño» y la hora.
+  Claves nuevas `schedule_days` (8 `input_boolean`) y `schedule_times` (8 `input_datetime`), en ese orden.
+- Botón **«Calentar hoy»** (`heat_today`, `input_boolean.jacuzzi_hoy_si`) junto al plan cuando, con uso Siempre, hoy
+  no toca baño por guardia en el calendario o por día apagado. Encendido, el botón pasa a «Hoy no» para deshacerlo.
+  Se apaga solo a medianoche.
+
+### Cambiado
+- Si hoy hay baño lo dice el plan (`b` en el JSON): de ahí salen el dial (deseada o mantenimiento), «Baño hoy a las»
+  y «Hemos terminado». Con un plan sin `b` se mantiene lo de antes (uso Hoy/Siempre y sin «Hoy no lo uso»).
+- Resumen plegado: «Hoy no toca» cuando hoy no hay baño.
+
+### Quitado
+- «Laborables» y «Festivos y finde» (`ready_time_workday` / `ready_time_holiday`): los sustituye el horario.
+
 ## [0.2.13] - 2026-10-20
 
 ### Añadido

@@ -26,9 +26,22 @@ function skippingToday(states: States, cfg: LayZSpaCardConfig): boolean {
   return !!cfg.skip_today && states[cfg.skip_today]?.state === "on";
 }
 
-/** Uso Hoy/Siempre y no se ha dicho «Hoy no lo uso» (con él, el día cuenta como uso No). */
+/** ¿Hoy hay baño? Lo dice el plan (b: uso, horario semanal, guardia, «Calentar hoy», «Hoy no lo uso»).
+ *  Con un plan sin b (versión anterior), uso Hoy/Siempre y sin «Hoy no lo uso». */
 function usesNight(states: States, cfg: LayZSpaCardConfig): boolean {
+  const bath = planJson(states, cfg)?.b;
+  if (typeof bath === "boolean") return bath;
   return nightUsage(states, cfg) && !skippingToday(states, cfg);
+}
+
+function planJson(states: States, cfg: LayZSpaCardConfig): Record<string, unknown> | null {
+  const raw = cfg.plan ? states[cfg.plan]?.state ?? "" : "";
+  if (!raw.startsWith("{")) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 function helperRange(attrs: Record<string, unknown>) {
@@ -54,18 +67,27 @@ export function targetCall(src: TargetSource, value: number) {
     : { domain: "climate", service: "set_temperature", data: { entity_id: src.entity, temperature: value } };
 }
 
-export type PlanView = { text: string; heating: boolean; filtering: boolean; grid: boolean; observing: boolean; rule: number; ask: boolean; kept: boolean; forced: boolean };
+/** Por qué hoy no hay baño con uso Siempre: guardia en el calendario o día apagado en el horario. */
+export type NoBathReason = "guardia" | "apagado" | "";
+
+export type PlanView = {
+  text: string;
+  heating: boolean;
+  filtering: boolean;
+  grid: boolean;
+  observing: boolean;
+  rule: number;
+  ask: boolean;
+  kept: boolean;
+  forced: boolean;
+  bath: boolean | null;
+  reason: NoBathReason;
+};
 
 export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | null {
   if (!cfg.plan || !plannerActive(states, cfg)) return null;
-  const raw = states[cfg.plan]?.state ?? "";
-  if (!raw.startsWith("{")) return null;
-  let p: Record<string, unknown>;
-  try {
-    p = JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  const p = planJson(states, cfg);
+  if (!p) return null;
   return {
     text: String(p.m ?? ""),
     heating: p.a === "calentar",
@@ -76,6 +98,8 @@ export function planView(states: States, cfg: LayZSpaCardConfig): PlanView | nul
     ask: p.i === true,
     kept: p.k === true,
     forced: p.c === true,
+    bath: typeof p.b === "boolean" ? p.b : null,
+    reason: p.g === "guardia" || p.g === "apagado" ? p.g : "",
   };
 }
 
@@ -128,15 +152,44 @@ export function readyTimeView(states: States, cfg: LayZSpaCardConfig): { entity:
   return { entity: cfg.ready_time, value: e.state.slice(0, 5) };
 }
 
-export type TimeSettingKey = "ready_until" | "ready_time_workday" | "ready_time_holiday";
+export type TimeSettingKey = "ready_until";
 
-/** Horas de los ajustes (fin del baño y horas por defecto): editables con el planificador, sea cual sea el uso. */
+/** Horas de los ajustes (fin del baño): editables con el planificador, sea cual sea el uso. */
 export function timeSettingView(states: States, cfg: LayZSpaCardConfig, key: TimeSettingKey): { entity: string; value: string } | null {
-  const entity = cfg[key];
+  return timeOf(states, cfg, cfg[key]);
+}
+
+function timeOf(states: States, cfg: LayZSpaCardConfig, entity: string | undefined): { entity: string; value: string } | null {
   if (!entity || !plannerActive(states, cfg)) return null;
   const e = states[entity];
   if (!isValid(e) || !/^\d{2}:\d{2}/.test(e.state)) return null;
   return { entity, value: e.state.slice(0, 5) };
+}
+
+const SCHEDULE_LABELS = ["L", "M", "X", "J", "V", "S", "D", "Festivo"];
+
+export type ScheduleRow = { label: string; day: string; on: boolean; time: { entity: string; value: string } | null };
+
+/** Horario semanal en los ajustes: una fila por día (L…D y Festivo) con «hay baño» y la hora. Las filas cuyo
+ *  interruptor no existe se omiten. */
+export function scheduleView(states: States, cfg: LayZSpaCardConfig): ScheduleRow[] | null {
+  const days = cfg.schedule_days;
+  if (!days?.length || !plannerActive(states, cfg)) return null;
+  const rows: ScheduleRow[] = [];
+  days.slice(0, SCHEDULE_LABELS.length).forEach((day, i) => {
+    if (!isValid(states[day])) return;
+    rows.push({ label: SCHEDULE_LABELS[i], day, on: states[day].state === "on", time: timeOf(states, cfg, cfg.schedule_times?.[i]) });
+  });
+  return rows.length ? rows : null;
+}
+
+/** «Calentar hoy»: con uso Siempre y hoy sin baño por guardia o día apagado, o ya activado (para deshacerlo). */
+export function heatTodayView(states: States, cfg: LayZSpaCardConfig): { entity: string; on: boolean; reason: NoBathReason } | null {
+  const entity = cfg.heat_today;
+  if (!entity || !plannerActive(states, cfg) || !isValid(states[entity])) return null;
+  const on = states[entity].state === "on";
+  const reason = planView(states, cfg)?.reason ?? "";
+  return on || reason ? { entity, on, reason } : null;
 }
 
 /** «Hoy no lo uso» en los ajustes: con uso Hoy/Siempre, o encendido (para poder apagarlo). */
@@ -197,10 +250,12 @@ export function settingsSummary(
   readyAt: { value: string } | null,
   until: { value: string } | null = null,
   skipToday = false,
-  filter: { value: number | null } | null = null
+  filter: { value: number | null } | null = null,
+  noBath = false
 ): string {
   const parts: string[] = [];
   if (skipToday) parts.push("Hoy no se usa");
+  else if (noBath) parts.push("Hoy no toca");
   const t = (v: { value: number | null }) => (v.value !== null ? formatTemp(v.value) : "--");
   const desired = temps?.desired;
   const maint = temps?.maint;

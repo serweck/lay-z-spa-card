@@ -29,8 +29,21 @@
       "mdi:minus": "−", "mdi:plus": "+", "mdi:hot-tub": "🛁", "mdi:flash": "⚡",
       "mdi:water-thermometer": "💧", "mdi:home-thermometer-outline": "🌡", "mdi:timer-sand": "⏳",
       "mdi:check-circle": "✓", "mdi:alert": "⚠", "mdi:power-plug-off": "🔌",
-      "mdi:flash-alert": "⚡", "mdi:wifi-off": "📴",
+      "mdi:flash-alert": "⚡", "mdi:wifi-off": "📴", "mdi:calendar-week": "📅", "mdi:calendar-remove": "✕",
     };
+    // ha-switch mínimo: casilla con .checked y evento change
+    customElements.define("ha-switch", class extends HTMLElement {
+      connectedCallback() {
+        if (this.firstChild) return;
+        const i = document.createElement("input");
+        i.type = "checkbox";
+        i.checked = !!this._checked;
+        i.addEventListener("change", (e) => { e.stopPropagation(); this._checked = i.checked; this.dispatchEvent(new Event("change")); });
+        this.appendChild(i);
+      }
+      set checked(v) { this._checked = v; if (this.firstChild) this.firstChild.checked = v; }
+      get checked() { return !!this._checked; }
+    });
     // Como el ha-card real: estilo en su propio shadow DOM (la tarjeta pone style="--accent:...").
     customElements.define("ha-card", class extends HTMLElement {
       constructor() {
@@ -52,6 +65,9 @@
   <div class="grid" id="grid"></div>
   <div id="log"></div>
   <script type="module">
+    const DAYS = ["lun", "mar", "mie", "jue", "vie", "sab", "dom", "fes"];
+    const DAY_ON = { lun: "off", mar: "on", mie: "off", jue: "on", vie: "on", sab: "on", dom: "on", fes: "on" };
+    const DAY_AT = { lun: "20:00", mar: "20:00", mie: "20:00", jue: "20:00", vie: "22:00", sab: "21:00", dom: "21:00", fes: "21:00" };
     const CONFIG = {
       type: "custom:lay-z-spa-card", name: "Jacuzzi",
       climate: "climate.layzspa_temperature_control", bubbles: "switch.layzspa_airbubbles",
@@ -64,12 +80,22 @@
       maintenance: "input_number.jacuzzi_temp_mantenimiento", plan: "sensor.jacuzzi_plan",
       planner: "input_boolean.jacuzzi_planificador", observe: "input_boolean.jacuzzi_planificador_observar",
       grid_extra: "sensor.jacuzzi_extra_red", ready_time: "input_datetime.jacuzzi_hora_listo",
+      skip_today: "input_boolean.jacuzzi_hoy_no", heat_today: "input_boolean.jacuzzi_hoy_si",
+      schedule_days: DAYS.map((d) => `input_boolean.jacuzzi_dia_${d}`),
+      schedule_times: DAYS.map((d) => `input_datetime.jacuzzi_hora_${d}`),
     };
     const st = (state, attributes = {}) => ({ state, attributes });
     function base({ mode = "fan_only", target = 37, current = 27, heater = "off", ready = "off",
                     ttr = "9.8333", err = "0", conn = "on", plug = "on", watts = "2.8", bubbles = "off",
-                    planner = "off", observe = "off", usage = "No", plan = null, extra = "0" } = {}) {
+                    planner = "off", observe = "off", usage = "No", plan = null, extra = "0", hoySi = "off" } = {}) {
+      const schedule = {};
+      DAYS.forEach((d, i) => {
+        schedule[CONFIG.schedule_days[i]] = st(DAY_ON[d]);
+        schedule[CONFIG.schedule_times[i]] = st(`${DAY_AT[d]}:00`, { has_date: false, has_time: true });
+      });
       return {
+        ...schedule,
+        [CONFIG.skip_today]: st("off"), [CONFIG.heat_today]: st(hoySi),
         [CONFIG.climate]: conn === "on"
           ? st(mode, { temperature: target, current_temperature: current, min_temp: 20, max_temp: 40,
                        target_temp_step: 1, hvac_modes: ["fan_only", "off", "heat"] })
@@ -102,6 +128,10 @@
       "Planificador apagado (como 0.1.1)": base({ planner: "off", usage: "Hoy" }),
       "Planificador con uso No (ajustes: deseada y mantenimiento)": base({ planner: "on", usage: "No",
         plan: '{"a":"depurar","t":30,"r":false,"n":13,"m":"Agua a 30 °C: depurando","h":0,"l":"","v":false}' }),
+      "Siempre, hoy guardia (Calentar hoy)": base({ planner: "on", usage: "Siempre",
+        plan: '{"a":"no_calentar","t":30,"r":false,"n":8,"m":"Hoy guardia: solo mantenimiento a 30 °C","h":0,"l":"","v":false,"b":false,"g":"guardia"}' }),
+      "Siempre, día apagado con Calentar hoy activado": base({ planner: "on", usage: "Siempre", hoySi: "on",
+        plan: '{"a":"no_calentar","t":37,"r":false,"n":8,"m":"Esperando sol o la hora del remate","h":5.4,"l":"","v":false,"b":true,"g":""}' }),
     };
     const log = document.getElementById("log");
     await customElements.whenDefined("lay-z-spa-card");
@@ -125,6 +155,8 @@
             s[id] = { ...s[id], state: data.option };
           if (domain === "input_datetime" && service === "set_datetime")
             s[id] = { ...s[id], state: data.time };
+          if (domain === "input_boolean" && (service === "turn_on" || service === "turn_off"))
+            s[id] = { ...s[id], state: service === "turn_on" ? "on" : "off" };
           if (domain === "input_boolean" && service === "toggle")
             s[id] = { ...s[id], state: s[id].state === "on" ? "off" : "on" };
           if (domain === "switch" && service === "toggle")

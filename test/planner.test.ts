@@ -16,8 +16,6 @@ const cfg: LayZSpaCardConfig = {
   ready_time: "input_datetime.hora",
   answer_script: "script.respuesta",
   ready_until: "input_datetime.fin",
-  ready_time_workday: "input_datetime.lab",
-  ready_time_holiday: "input_datetime.fest",
   skip_today: "input_boolean.hoy_no",
   filter_min: "input_number.dep_min",
   filter_today: "sensor.dep_hoy",
@@ -79,7 +77,7 @@ describe("targetCall", () => {
 
 describe("planView", () => {
   it("lee el JSON del plan", () => {
-    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, filtering: false, grid: true, observing: false, rule: 4, ask: false, kept: false, forced: false });
+    expect(planView(base(), cfg)).toEqual({ text: "Precalentando en valle hasta 34 °C", heating: true, filtering: false, grid: true, observing: false, rule: 4, ask: false, kept: false, forced: false, bath: null, reason: "" });
   });
   it("marca el modo observar", () => {
     expect(planView(base({ "input_boolean.obs": s("on") }), cfg)?.observing).toBe(true);
@@ -242,11 +240,9 @@ describe("answerCall", () => {
 
 describe("timeSettingView (horas de los ajustes)", () => {
   const con = (over: States = {}) =>
-    base({ "input_datetime.fin": s("23:30:00"), "input_datetime.lab": s("20:00:00"), "input_datetime.fest": s("12:00:00"), ...over });
+    base({ "input_datetime.fin": s("23:30:00"), ...over });
   it("lee cada hora sin segundos", () => {
     expect(timeSettingView(con(), cfg, "ready_until")).toEqual({ entity: "input_datetime.fin", value: "23:30" });
-    expect(timeSettingView(con(), cfg, "ready_time_workday")?.value).toBe("20:00");
-    expect(timeSettingView(con(), cfg, "ready_time_holiday")?.value).toBe("12:00");
   });
   it("nada con el planificador apagado, sin configurar o sin dato", () => {
     expect(timeSettingView(con({ "input_boolean.plan": s("off") }), cfg, "ready_until")).toBeNull();
