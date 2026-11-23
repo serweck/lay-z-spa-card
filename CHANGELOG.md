@@ -4,6 +4,15 @@ Todas las versiones notables de este proyecto se documentan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.4.0] - 2026-11-23
+
+### Añadido
+- **Mantenimiento vencido alrededor del dial**: cloro, aclarado, limpieza y cambio de filtro. Cuando los días del
+  contador de la placa llegan a su intervalo, sale una insignia naranja en su esquina del dial. Tocarla abre el
+  historial; mantenerla pulsada abre «¿Reiniciar?», que pulsa el botón de reinicio de la placa.
+  Claves nuevas `chlorine_*`, `filter_rinse_*`, `filter_clean_*` y `filter_change_*` (`_age`, `_interval`, `_reset`),
+  detectadas solas con las entidades de la placa.
+
 ## [0.3.0] - 2026-10-26
 
 ### Añadido

@@ -29,6 +29,7 @@
       "mdi:minus": "−", "mdi:plus": "+", "mdi:hot-tub": "🛁", "mdi:flash": "⚡",
       "mdi:water-thermometer": "💧", "mdi:home-thermometer-outline": "🌡", "mdi:timer-sand": "⏳",
       "mdi:check-circle": "✓", "mdi:alert": "⚠", "mdi:power-plug-off": "🔌",
+      "mdi:flask-outline": "🧪", "mdi:water-sync": "🔄", "mdi:spray-bottle": "🧽", "mdi:filter-remove": "🗑",
       "mdi:flash-alert": "⚡", "mdi:wifi-off": "📴", "mdi:calendar-week": "📅", "mdi:calendar-remove": "✕",
     };
     // ha-switch mínimo: casilla con .checked y evento change
@@ -83,18 +84,33 @@
       skip_today: "input_boolean.jacuzzi_hoy_no", heat_today: "input_boolean.jacuzzi_hoy_si",
       schedule_days: DAYS.map((d) => `input_boolean.jacuzzi_dia_${d}`),
       schedule_times: DAYS.map((d) => `input_datetime.jacuzzi_hora_${d}`),
+      chlorine_age: "sensor.layzspa_chlorine_age", chlorine_interval: "number.layzspa_chlorine_interval",
+      chlorine_reset: "button.layzspa_reset_chlorine_timer",
+      filter_rinse_age: "sensor.layzspa_filter_rinse", filter_rinse_interval: "number.layzspa_filter_rinse_interval",
+      filter_rinse_reset: "button.layzspa_reset_filter_rinse_timer",
+      filter_clean_age: "sensor.layzspa_filter_clean", filter_clean_interval: "number.layzspa_filter_clean_interval",
+      filter_clean_reset: "button.layzspa_reset_filter_clean_timer",
+      filter_change_age: "sensor.layzspa_filter_age", filter_change_interval: "number.layzspa_filter_change_interval",
+      filter_change_reset: "button.layzspa_reset_filter_change_timer",
     };
+    const CARE = ["chlorine", "filter_rinse", "filter_clean", "filter_change"];
     const st = (state, attributes = {}) => ({ state, attributes });
     function base({ mode = "fan_only", target = 37, current = 27, heater = "off", ready = "off",
                     ttr = "9.8333", err = "0", conn = "on", plug = "on", watts = "2.8", bubbles = "off",
-                    planner = "off", observe = "off", usage = "No", plan = null, extra = "0", hoySi = "off" } = {}) {
+                    planner = "off", observe = "off", usage = "No", plan = null, extra = "0", hoySi = "off", care = [2, 2, 2, 2] } = {}) {
       const schedule = {};
       DAYS.forEach((d, i) => {
         schedule[CONFIG.schedule_days[i]] = st(DAY_ON[d]);
         schedule[CONFIG.schedule_times[i]] = st(`${DAY_AT[d]}:00`, { has_date: false, has_time: true });
       });
+      const careStates = {};
+      CARE.forEach((k, i) => {
+        careStates[CONFIG[`${k}_age`]] = st(String(care[i]));
+        careStates[CONFIG[`${k}_interval`]] = st(String([7, 7, 20, 60][i]));
+        careStates[CONFIG[`${k}_reset`]] = st("unknown");
+      });
       return {
-        ...schedule,
+        ...schedule, ...careStates,
         [CONFIG.skip_today]: st("off"), [CONFIG.heat_today]: st(hoySi),
         [CONFIG.climate]: conn === "on"
           ? st(mode, { temperature: target, current_temperature: current, min_temp: 20, max_temp: 40,
@@ -125,6 +141,10 @@
         plan: '{"a":"calentar","t":34,"r":true,"n":4,"m":"Precalentando en valle hasta 34 °C","h":5.4,"l":"08:24","v":true}' }),
       "Planificador observando": base({ planner: "on", observe: "on", usage: "Siempre",
         plan: '{"a":"calentar","t":37,"r":false,"n":6,"m":"Remate para llegar a las 20:00","h":7.7,"l":"21:30","v":false}' }),
+      "Mantenimiento vencido (los 4)": base({ care: [30.51, 8, 21, 61] }),
+      "Planificador con cloro, aclarado y limpieza vencidos": base({ mode: "heat", heater: "on", watts: "1942", planner: "on", usage: "Hoy",
+        care: [30.51, 30.51, 30.51, 30.51],
+        plan: '{"a":"calentar","t":34,"r":true,"n":4,"m":"Precalentando en valle hasta 34 °C","h":5.4,"l":"08:24","v":true}' }),
       "Planificador apagado (como 0.1.1)": base({ planner: "off", usage: "Hoy" }),
       "Planificador con uso No (ajustes: deseada y mantenimiento)": base({ planner: "on", usage: "No",
         plan: '{"a":"depurar","t":30,"r":false,"n":13,"m":"Agua a 30 °C: depurando","h":0,"l":"","v":false}' }),
@@ -159,6 +179,10 @@
             s[id] = { ...s[id], state: service === "turn_on" ? "on" : "off" };
           if (domain === "input_boolean" && service === "toggle")
             s[id] = { ...s[id], state: s[id].state === "on" ? "off" : "on" };
+          if (domain === "button" && service === "press") {
+            const k = CARE.find((c) => CONFIG[`${c}_reset`] === id);
+            if (k) s[CONFIG[`${k}_age`]] = st("0");
+          }
           if (domain === "switch" && service === "toggle")
             s[id] = { ...s[id], state: s[id].state === "on" ? "off" : "on" };
           hass.states = s;

@@ -33,6 +33,11 @@ const SCHEMA = [
   { name: "skip_today", selector: { entity: { domain: "input_boolean" } } },
   { name: "filter_min", selector: { entity: { domain: "input_number" } } },
   { name: "filter_today", selector: { entity: { domain: "sensor" } } },
+  ...(["chlorine", "filter_rinse", "filter_clean", "filter_change"] as const).flatMap((k) => [
+    { name: `${k}_age`, selector: { entity: { domain: "sensor" } } },
+    { name: `${k}_interval`, selector: { entity: { domain: ["number", "input_number"] } } },
+    { name: `${k}_reset`, selector: { entity: { domain: ["button", "script"] } } },
+  ]),
 ];
 
 const LABELS: Record<string, string> = {
@@ -64,6 +69,18 @@ const LABELS: Record<string, string> = {
   skip_today: "Planificador: hoy no lo uso, solo mantenimiento hasta medianoche (input_boolean)",
   filter_min: "Planificador: depuración mínima diaria, en horas (input_number)",
   filter_today: "Planificador: horas de bomba de hoy (sensor)",
+  chlorine_age: "Cloro: días desde el último (sensor)",
+  chlorine_interval: "Cloro: cada cuántos días (number)",
+  chlorine_reset: "Cloro: reiniciar el contador (button)",
+  filter_rinse_age: "Aclarado del filtro: días desde el último (sensor)",
+  filter_rinse_interval: "Aclarado del filtro: cada cuántos días (number)",
+  filter_rinse_reset: "Aclarado del filtro: reiniciar el contador (button)",
+  filter_clean_age: "Limpieza del filtro: días desde la última (sensor)",
+  filter_clean_interval: "Limpieza del filtro: cada cuántos días (number)",
+  filter_clean_reset: "Limpieza del filtro: reiniciar el contador (button)",
+  filter_change_age: "Cambio de filtro: días desde el último (sensor)",
+  filter_change_interval: "Cambio de filtro: cada cuántos días (number)",
+  filter_change_reset: "Cambio de filtro: reiniciar el contador (button)",
 };
 
 @customElement(EDITOR_TAG)

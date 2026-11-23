@@ -35,6 +35,7 @@ import {
 } from "./dial";
 import { detectEntities } from "./detect";
 import { answerCall, answerView, type Answer, filterView, finishedView, formatHours, gridExtraW, heatTodayView, planView, plannerToggle, readyForTarget, readyTimeView, scheduleView, type ScheduleRow, settingsSummary, skipTodayCall, skipTodayView, tempSettingView, type TempSettingKey, type TempSettingView, timeSettingView, targetCall, targetSource, usageView } from "./planner";
+import { careResetCall, careView, formatDays, type CareKey, type CareTask } from "./care";
 import "./editor";
 
 /* eslint-disable no-console */
@@ -71,6 +72,10 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   /** Entidad a la que pertenece el pendiente: al cambiar el uso, el de la deseada no vale para el mantenimiento. */
   @state() private _pendingEntity: string | null = null;
   @state() private _settingsOpen = false;
+  /** Mantenimiento cuyo «¿Reiniciar?» está abierto (pulsación larga en su insignia). */
+  @state() private _careConfirm: CareKey | null = null;
+  private _careTimer: number | null = null;
+  private _careLongPressed = false;
 
   private _valueAngle = 0;
   private _dragPointerId: number | null = null;
@@ -97,6 +102,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     this._removeWindowListeners();
+    this._careRelease();
   }
 
   private get _states(): States {
@@ -188,10 +194,12 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
               : nothing}
           </svg>
           <div class="dial-center">${ok ? this._renderCenter(label, shownTarget, current, src.caption) : this._renderUnavailable(avail)}</div>
+          ${this._renderCare()}
         </div>
 
         ${ok ? this._renderInfo() : nothing} ${ok ? this._renderPlanner() : nothing}
         ${this._renderModes(ok, mode, climate.attributes.hvac_modes)}
+        ${this._renderCareConfirm()}
       </ha-card>
     `;
   }
@@ -215,6 +223,80 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
         <button class="round" @click=${() => this._step(1)}><ha-icon icon="mdi:plus"></ha-icon></button>
       </div>
     `;
+  }
+
+  /** Insignias de mantenimiento vencido en las esquinas del dial: tocar = historial; mantener = «¿Reiniciar?». */
+  private _renderCare(): TemplateResult | typeof nothing {
+    const tasks = careView(this._states, this.config);
+    if (!tasks.length) return nothing;
+    return html`${tasks.map(
+      (t) => html`<button
+        class="care care-${t.key}"
+        title="${t.action}: hace ${formatDays(t.age)} (cada ${formatDays(t.interval)}). Mantén pulsado para reiniciar"
+        @pointerdown=${(e: PointerEvent) => this._carePress(e, t)}
+        @pointerup=${this._careRelease}
+        @pointerleave=${this._careRelease}
+        @pointercancel=${this._careRelease}
+        @contextmenu=${(e: Event) => e.preventDefault()}
+        @click=${() => this._careClick(t)}
+      >
+        <ha-icon icon=${t.icon}></ha-icon>
+        <span class="care-label">${t.label}</span>
+      </button>`
+    )}`;
+  }
+
+  private _renderCareConfirm(): TemplateResult | typeof nothing {
+    const t = this._careConfirm ? careView(this._states, this.config).find((c) => c.key === this._careConfirm) : undefined;
+    if (!t) return nothing;
+    return html`<div class="care-backdrop" @click=${this._careClose}>
+      <div class="care-dialog" role="dialog" aria-modal="true" @click=${(e: Event) => e.stopPropagation()}>
+        <ha-icon icon=${t.icon}></ha-icon>
+        <div class="care-title">${t.action}</div>
+        <div class="care-detail">Hace ${formatDays(t.age)}; toca cada ${formatDays(t.interval)}.</div>
+        <div class="care-question">¿Ya está hecho? Reinicia el contador.</div>
+        <div class="care-actions">
+          <button @click=${this._careClose}>Cancelar</button>
+          <button class="primary" @click=${() => this._careReset(t)}>Reiniciar</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  private _carePress(e: PointerEvent, t: CareTask): void {
+    if (e.button !== 0) return;
+    this._careLongPressed = false;
+    this._careRelease();
+    this._careTimer = window.setTimeout(() => {
+      this._careTimer = null;
+      this._careLongPressed = true;
+      if (t.reset) this._careConfirm = t.key;
+    }, 500);
+  }
+
+  private _careRelease = (): void => {
+    if (this._careTimer !== null) window.clearTimeout(this._careTimer);
+    this._careTimer = null;
+  };
+
+  private _careClick(t: CareTask): void {
+    // El click que sigue a una pulsación larga no abre el historial
+    if (this._careLongPressed) {
+      this._careLongPressed = false;
+      return;
+    }
+    this._openMoreInfo(t.age_entity);
+  }
+
+  private _careClose = (): void => {
+    this._careConfirm = null;
+  };
+
+  private _careReset(t: CareTask): void {
+    this._careConfirm = null;
+    if (!t.reset) return;
+    const c = careResetCall(t.reset);
+    this.hass.callService(c.domain, c.service, c.data);
   }
 
   private _renderUnavailable(avail: Exclude<ReturnType<typeof availability>, "ok">): TemplateResult {
@@ -590,6 +672,7 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
 
   static styles = css`
     ha-card {
+      position: relative;
       padding: 12px 12px 16px;
       color: var(--primary-text-color);
     }
@@ -748,6 +831,130 @@ export class LayZSpaCard extends LitElement implements LovelaceCard {
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+    /* Mantenimiento vencido: en las esquinas del cuadrado del dial, fuera del arco */
+    button.care {
+      position: absolute;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #ffa000;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+    button.care ha-icon {
+      --mdc-icon-size: 18px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 2px solid #ffa000;
+      background: rgba(255, 160, 0, 0.14);
+      animation: care-pulse 2.4s ease-in-out infinite;
+    }
+    .care-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .care-chlorine {
+      top: 0;
+      left: 0;
+    }
+    .care-filter_rinse {
+      top: 0;
+      right: 0;
+    }
+    .care-filter_clean {
+      bottom: 0;
+      left: 0;
+      flex-direction: column-reverse;
+    }
+    .care-filter_change {
+      bottom: 0;
+      right: 0;
+      flex-direction: column-reverse;
+    }
+    @keyframes care-pulse {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 160, 0, 0.45);
+      }
+      50% {
+        box-shadow: 0 0 0 5px rgba(255, 160, 0, 0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button.care ha-icon {
+        animation: none;
+      }
+    }
+    .care-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      border-radius: var(--ha-card-border-radius, 12px);
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .care-dialog {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      max-width: 280px;
+      padding: 18px 16px 14px;
+      border-radius: 16px;
+      text-align: center;
+      background: var(--ha-card-background, var(--card-background-color, #1c1c1e));
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    }
+    .care-dialog > ha-icon {
+      --mdc-icon-size: 32px;
+      color: #ffa000;
+    }
+    .care-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .care-detail,
+    .care-question {
+      font-size: 0.9rem;
+      color: var(--secondary-text-color);
+    }
+    .care-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .care-actions button {
+      min-width: 96px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--divider-color, #46494d);
+      background: transparent;
+      color: var(--primary-text-color);
+      font: inherit;
+      cursor: pointer;
+    }
+    .care-actions button.primary {
+      border-color: #ffa000;
+      background: #ffa000;
+      color: #1c1c1c;
+      font-weight: 600;
     }
     .unavail-icon {
       --mdc-icon-size: 36px;

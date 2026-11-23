@@ -1,6 +1,6 @@
 import type { EntityKey } from "./types";
 
-export const CARD_VERSION = "0.3.0";
+export const CARD_VERSION = "0.4.0";
 export const CARD_TAG = "lay-z-spa-card";
 export const EDITOR_TAG = "lay-z-spa-card-editor";
 
@@ -35,6 +35,18 @@ export const DEFAULT_ENTITIES: Record<EntityKey, string> = {
   skip_today: "input_boolean.jacuzzi_hoy_no",
   filter_min: "input_number.jacuzzi_depuracion_minima",
   filter_today: "sensor.jacuzzi_depuracion_hoy",
+  chlorine_age: "sensor.layzspa_chlorine_age",
+  chlorine_interval: "number.layzspa_chlorine_interval",
+  chlorine_reset: "button.layzspa_reset_chlorine_timer",
+  filter_rinse_age: "sensor.layzspa_filter_rinse",
+  filter_rinse_interval: "number.layzspa_filter_rinse_interval",
+  filter_rinse_reset: "button.layzspa_reset_filter_rinse_timer",
+  filter_clean_age: "sensor.layzspa_filter_clean",
+  filter_clean_interval: "number.layzspa_filter_clean_interval",
+  filter_clean_reset: "button.layzspa_reset_filter_clean_timer",
+  filter_change_age: "sensor.layzspa_filter_age",
+  filter_change_interval: "number.layzspa_filter_change_interval",
+  filter_change_reset: "button.layzspa_reset_filter_change_timer",
 };
 
 /** Horario semanal de casa (L, M, X, J, V, S, D, Festivo); getStubConfig los pone si existen los 8. */

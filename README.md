@@ -106,6 +106,34 @@ schedule_times: [input_datetime.jacuzzi_hora_lun, input_datetime.jacuzzi_hora_ma
 
 Con el planificador apagado, la tarjeta es exactamente la de la 0.1.1.
 
+## Mantenimiento (v0.4.0, opcional)
+
+Los cuatro contadores de la placa: cloro, aclarado, limpieza y cambio de filtro. Cuando los días desde el último llegan
+al intervalo, sale una insignia naranja en una esquina del dial (cloro arriba a la izquierda, aclarado arriba a la
+derecha, limpieza abajo a la izquierda, cambio de filtro abajo a la derecha). **Tocarla** abre el historial;
+**mantenerla pulsada** abre «¿Reiniciar?», que pulsa el botón de la placa y pone el contador a 0. Intervalo 0 = sin aviso.
+
+```yaml
+chlorine_age: sensor.layzspa_chlorine_age
+chlorine_interval: number.layzspa_chlorine_interval
+chlorine_reset: button.layzspa_reset_chlorine_timer
+filter_rinse_age: sensor.layzspa_filter_rinse
+filter_rinse_interval: number.layzspa_filter_rinse_interval
+filter_rinse_reset: button.layzspa_reset_filter_rinse_timer
+filter_clean_age: sensor.layzspa_filter_clean
+filter_clean_interval: number.layzspa_filter_clean_interval
+filter_clean_reset: button.layzspa_reset_filter_clean_timer
+filter_change_age: sensor.layzspa_filter_age
+filter_change_interval: number.layzspa_filter_change_interval
+filter_change_reset: button.layzspa_reset_filter_change_timer
+```
+
+| Clave | Para qué |
+|---|---|
+| `*_age` | Días desde el último (sensor de la placa) |
+| `*_interval` | Cada cuántos días toca (`number` o `input_number`) |
+| `*_reset` | Botón que reinicia el contador (`button`, o un `script`). Sin él, la insignia sale pero no se puede reiniciar |
+
 ## Estados de disponibilidad
 
 | Condición | Qué muestra |

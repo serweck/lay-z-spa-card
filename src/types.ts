@@ -56,6 +56,19 @@ export interface LayZSpaCardConfig extends LovelaceCardConfig {
   filter_min?: string;
   /** sensor (h): horas de bomba de hoy (history_stats). */
   filter_today?: string;
+  /** Mantenimientos de la placa: sensor (días desde el último), number (cada cuántos días) y button (reiniciar). */
+  chlorine_age?: string;
+  chlorine_interval?: string;
+  chlorine_reset?: string;
+  filter_rinse_age?: string;
+  filter_rinse_interval?: string;
+  filter_rinse_reset?: string;
+  filter_clean_age?: string;
+  filter_clean_interval?: string;
+  filter_clean_reset?: string;
+  filter_change_age?: string;
+  filter_change_interval?: string;
+  filter_change_reset?: string;
 }
 
 export type EntityKey = Exclude<keyof LayZSpaCardConfig, "type" | "name" | "schedule_days" | "schedule_times">;
